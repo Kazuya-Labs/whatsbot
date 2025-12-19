@@ -1,4 +1,44 @@
+name: Deploy whatsbot
+
 on:
- push:
-  branches:
-   - main 
+  push:
+    branches: [main]
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: "20" 
+
+      - name: Install dependencies
+        run: npm ci 
+
+      - name: Upload to VPS via SCP
+        uses: appleboy/scp-action@v0.1.4
+        with:
+          host: ${{ secrets.VPS_HOST}}
+          username: ${{ secrets.VPS_USER}}
+          key: ${{ secrets.VPS_KEY}}
+          port: ${{ secrets.VPS_PORT}}
+          source: "."
+          target: "/root/whatsbot"
+          strip_components: 1 
+
+      - name: Install & Start on VPS
+        uses: appleboy/ssh-action@v0.1.6
+        with:
+          host: ${{ secrets.VPS_HOST}}
+          username: ${{ secrets.VPS_USER}}
+          key: ${{ secrets.VPS_KEY}}
+          port: ${{ secrets.VPS_PORT}}
+          script: |
+            cd /root/whatsbot
+            npm install --omit=dev
+            pm2 restart whatsbot || pm2 start index.js --name whatsbot
