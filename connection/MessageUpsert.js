@@ -9,6 +9,7 @@ const messageUpsert = async (event, kazuya) => {
     m.text = upsert.message.conversation || upsert.message.caption || null;
     m.contentType = getContentType(upsert.message);
     m.mimetype = upsert.message.mimetype;
+    m.timeStamp = upsert.messageTimeStamp;
     // key
     m.key = upsert.key;
     m.participants = m.key.participant || null;

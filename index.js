@@ -10,6 +10,7 @@ const {
 } = require("@whiskeysockets/baileys");
 const readline = require("readline").promises;
 const P = require("pino");
+const Handler = require("./utils/registerHandler");
 
 // custom handlers
 const handleMessage = require("./connection/MessageUpsert");
@@ -72,6 +73,7 @@ async function start() {
         console.log("Koneksi terbuka ...");
         //    const decode = await sock.decodeJid(sock.user.id);
         //  console.log(decode);
+        await Handler.register("./plugins");
       }
     });
 
