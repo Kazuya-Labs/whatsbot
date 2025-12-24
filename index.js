@@ -74,7 +74,6 @@ async function start() {
         console.log("Koneksi terbuka ...");
         //    const decode = await sock.decodeJid(sock.user.id);
         //  console.log(decode);
-        const pluginLocation = path.join(process.cwd,"plugins")
         await Handler.register();
       }
     });
