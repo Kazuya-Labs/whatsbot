@@ -7,6 +7,6 @@ const execute = async () => {
 };
 
 module.exports = {
-  name: ["tes"],
+  names: ["tes"],
   execute
 };
