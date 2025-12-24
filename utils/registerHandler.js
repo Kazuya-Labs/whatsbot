@@ -31,8 +31,9 @@ Handler.loadPlugin = async (names, execute, opts = {}) => {
   }
 };
 
-Handler.register = async directory => {
+Handler.register = async () => {
   try {
+    const directory = path.join(process.cwd(), "plugins");
     const files = await fs.readdir(directory);
     await Promise.all(
       files.map(async file => {
@@ -45,6 +46,7 @@ Handler.register = async directory => {
           try {
             const { names, execute, ...opts } = require(fullPath);
             await Handler.loadPlugin(names, execute, opts);
+            console.log(`Load plugin ${fullPath}...`);
           } catch (error) {
             console.error("Error requiring file:", fullPath, error);
           }
