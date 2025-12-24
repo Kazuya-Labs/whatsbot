@@ -1,5 +1,6 @@
 // dependencies
 const { Boom } = require("@hapi/boom");
+const path = require('path')
 const fs = require("fs");
 const {
   makeWASocket,
@@ -73,7 +74,8 @@ async function start() {
         console.log("Koneksi terbuka ...");
         //    const decode = await sock.decodeJid(sock.user.id);
         //  console.log(decode);
-        await Handler.register("./plugins");
+        const pluginLocation = path.join(process.cwd,"plugins")
+        await Handler.register();
       }
     });
 
