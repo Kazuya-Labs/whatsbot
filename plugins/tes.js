@@ -1,6 +1,7 @@
-const execute = async () => {
+const execute = async ({m}) => {
   try {
-    console.dir("tess");
+    console.log('Ini adalah m')
+    m.reply(`Hai Ini adalah unit testing... `);
   } catch (e) {
     console.error(e);
   }
@@ -8,5 +9,5 @@ const execute = async () => {
 
 module.exports = {
   names: ["tes"],
-  execute
+  execute,
 };

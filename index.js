@@ -26,13 +26,12 @@ const rl = readline.createInterface({
 });
 
 // logger setup
-const logger = P({ level: "silent" });
+const logger = P({ level: "warn" });
 
 // helper: generate pairing code
 async function generateCode(sock) {
   try {
     const input = await rl.question("Masukan Nomor : ");
-    // Format nomor ke JID WhatsApp (628xxx@s.whatsapp.net)
     const number = input.replace(/[^0-9]/g, "");
     console.log("Meminta pairing code...");
     const code = await sock.requestPairingCode(number);
@@ -91,7 +90,7 @@ async function start() {
     const kazuya = new App(sock);
 
     sock.ev.on("messages.upsert", (event) => {
-      handleMessage(event, kazuya);
+      handleMessage(event, sock);
     });
     sock.ev.on("creds.update", saveCreds);
 

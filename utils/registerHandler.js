@@ -61,7 +61,7 @@ Handler.register = async () => {
 Handler.executeFn = async (command, opts) => {
   try {
     if (!command || !Handler.list[command]) return;
-    await Handler.list[command].execute(command, opts);
+    await Handler.list[command].execute(opts);
   } catch (e) {
     console.error("Error executing command:", e);
   }

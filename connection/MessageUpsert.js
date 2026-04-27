@@ -1,4 +1,5 @@
 const { getContentType } = require("@whiskeysockets/baileys");
+const Handler = require("../utils/registerHandler");
 const messageUpsert = async (event, sock) => {
   try {
     const upsert = event.messages[0];
@@ -7,7 +8,12 @@ const messageUpsert = async (event, sock) => {
     m.chatLid = upsert.key.remoteJidAlt; // KEY LID
     m.name = upsert.pushName;
     m.broadcast = upsert.broadcast;
-    m.text = upsert.message.conversation || upsert.message.caption || null;
+    m.text =
+      upsert.message.conversation ||
+      upsert.message.caption ||
+      upsert.message?.extendedTextMessage?.text ||
+      null;
+    m.command = m?.text?.split(" ")[0] ?? null;
     m.contentType = getContentType(upsert.message);
     m.mimetype = upsert.message.mimetype;
     m.timeStamp = upsert.messageTimeStamp;
@@ -17,16 +23,17 @@ const messageUpsert = async (event, sock) => {
     m.participantAlt = m.key.participantAlt;
     m.addresMode = m.key.addressingMode; // PN = LID
 
-    m.reply = async text => {
+    m.reply = async (text) => {
       try {
-        await sock.sendMessage(m.senderJid, { text }, { quoted: upsert });
+        await sock.sendMessage(m.chatLid, { text }, { quoted: upsert });
       } catch (e) {
         console.error(e);
       }
     };
 
-    console.log({ m });
-    console.log(`JSON.stringify(upsert):`, JSON.stringify(upsert, null, 2));
+    const dat = JSON.stringify(m, null, 2);
+    console.log(dat);
+    await Handler.executeFn(m.text, { m, sock });
   } catch (e) {
     console.error(e);
   }

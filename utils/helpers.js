@@ -1,6 +1,6 @@
 const fs = require("fs");
 
-const readJson = file => {
+const readJson = (file) => {
   try {
     if (!file) throw new Error("Argumen 'file' dibutuhkan");
     const raw = fs.readFileSync(file, "utf-8");
@@ -10,7 +10,12 @@ const readJson = file => {
     return null;
   }
 };
-
+/**
+ *
+ * @param {string} file - filepath atau format file
+ * @param {object} newData - data yang mau ditulis
+ * @returns {object}
+ */
 const writeJson = (file, newData) => {
   try {
     if (!file || typeof newData === "undefined") {
@@ -26,5 +31,5 @@ const writeJson = (file, newData) => {
 
 module.exports = {
   readJson,
-  writeJson
+  writeJson,
 };
