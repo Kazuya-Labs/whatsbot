@@ -1,13 +1,14 @@
 // dependencies
 const { Boom } = require("@hapi/boom");
-const path = require('path')
+const path = require("path");
 const fs = require("fs");
 const {
   makeWASocket,
   useMultiFileAuthState,
   makeCacheableSignalKeyStore,
   DisconnectReason,
-  proto
+  proto,
+  Browsers,
 } = require("@whiskeysockets/baileys");
 const readline = require("readline").promises;
 const P = require("pino");
@@ -17,10 +18,11 @@ const Handler = require("./utils/registerHandler");
 const handleMessage = require("./connection/MessageUpsert");
 const handleConnection = require("./connection/handleConnect");
 const App = require("./utils/serialize.js");
+const { resolve } = require("dns");
 // readline interface
 const rl = readline.createInterface({
   input: process.stdin,
-  output: process.stdout
+  output: process.stdout,
 });
 
 // logger setup
@@ -30,11 +32,17 @@ const logger = P({ level: "silent" });
 async function generateCode(sock) {
   try {
     const input = await rl.question("Masukan Nomor : ");
-    const number = parseInt(input);
+    // Format nomor ke JID WhatsApp (628xxx@s.whatsapp.net)
+    const number = input.replace(/[^0-9]/g, "");
+    console.log("Meminta pairing code...");
     const code = await sock.requestPairingCode(number);
-    console.log(`Your code : ${code}`);
+    console.log(`\n✅ Pairing Code: ${code}\n`);
+    return code;
   } catch (err) {
-    console.error("Error generating code:", err);
+    console.error("Error generating code:", err.message);
+    // Retry jika gagal
+    console.log("Mencoba lagi...");
+    return generateCode(sock);
   }
 }
 
@@ -47,16 +55,18 @@ async function start() {
     const sock = makeWASocket({
       printQRInTerminal: false,
       logger,
+      version: [2, 3000, 1033893291],
       auth: {
         creds: state.creds,
-        keys: makeCacheableSignalKeyStore(state.keys, logger)
+        keys: makeCacheableSignalKeyStore(state.keys, logger),
       },
-      getMessage: () => proto.Message.create({ conversation: "test" })
+      // browser: Browsers.ubuntu("Chrome"),
+      getMessage: () => proto.Message.create({ conversation: "test" }),
     });
 
     // pairing code if not registered
     if (!sock.authState.creds.registered) {
-      //fs.rmSync("./baileys_auth_info", { recursive: true, force: true });
+      console.log("Belum teregistrasi, meminta pairing code...");
       await generateCode(sock);
     }
 
@@ -80,7 +90,7 @@ async function start() {
 
     const kazuya = new App(sock);
 
-    sock.ev.on("messages.upsert", event => {
+    sock.ev.on("messages.upsert", (event) => {
       handleMessage(event, kazuya);
     });
     sock.ev.on("creds.update", saveCreds);
