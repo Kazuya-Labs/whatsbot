@@ -1,0 +1,55 @@
+import { sql } from "drizzle-orm";
+import { Database } from "../utils/db-helper.js"; // Gunakan Class Database buatan kita
+
+// Inisialisasi service untuk tabel user
+const userService = new Database("user");
+
+const execute = async ({ m }) => {
+  try {
+    const args = m.text?.split(" ") || [];
+    const flag = args[1];
+
+    if (!flag || !flag.includes("|")) {
+      return m.reply(
+        "❌ Format salah! Gunakan: *!addsaldo ID_USER|JUMLAH* (Contoh: !addsaldo 1|50000)",
+      );
+    }
+
+    const [nomor, ammount] = flag.split("|");
+    const convert = Number(ammount);
+
+    if (isNaN(convert) || convert <= 0) {
+      return m.reply(
+        "❌ Jumlah saldo harus berupa angka yang valid dan lebih dari 0!",
+      );
+    }
+
+    // Menggunakan customUpdate dari Class Database agar bisa custom chaining pakai SQL increment
+    const result = await userService
+      .customUpdate()
+      .set({
+        saldo: sql`${userService.table.saldo} + ${convert}`,
+      })
+      .where(sql`${userService.table.id} = ${Number(nomor)}`)
+      .returning();
+
+    if (!result || result.length === 0) {
+      return m.reply("❌ Gagal menambah saldo. User tidak ditemukan!");
+    }
+
+    // Berikan respons sukses ke user
+    const updatedUser = result[0];
+    m.reply(
+      `✅ Berhasil menambah saldo sebesar *Rp ${convert.toLocaleString("id-ID")}* ke User ID ${nomor}.\n\n*Saldo Sekarang:* Rp ${updatedUser.saldo.toLocaleString("id-ID")}`,
+    );
+  } catch (err) {
+    console.error("Error in addsaldo plugin:", err);
+    m.reply("❌ Terjadi kesalahan internal saat menambah saldo.");
+  }
+};
+
+export default {
+  names: ["addsaldo"],
+  execute,
+  owner: true, // Otomatis tersaring oleh handler validasi owner kita
+};

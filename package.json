@@ -7,13 +7,22 @@
     "start": "node index.js"
   },
   "keywords": [],
-  "author": "",
+  "author": "kazuya-tech",
+  "type": "module",
   "license": "ISC",
   "packageManager": "pnpm@10.19.0",
   "dependencies": {
     "@hapi/boom": "^10.0.1",
-    "@whiskeysockets/baileys": "7.0.0-rc.9",
-    "pino": "^10.1.0",
-    "pnpm": "^10.24.0"
+    "@whiskeysockets/baileys": "7.0.0-rc13",
+    "axios": "^1.16.1",
+    "better-sqlite3": "^12.10.0",
+    "dotenv": "^17.4.2",
+    "drizzle-orm": "^0.45.2",
+    "node-cache": "^5.1.2",
+    "pino": "^10.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^25.9.1",
+    "drizzle-kit": "^0.31.10"
   }
 }

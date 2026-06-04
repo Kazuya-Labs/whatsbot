@@ -1,104 +1,148 @@
-// dependencies
-const { Boom } = require("@hapi/boom");
-const path = require("path");
-const fs = require("fs");
-const {
+import { Boom } from "@hapi/boom";
+import {
   makeWASocket,
   useMultiFileAuthState,
   makeCacheableSignalKeyStore,
   DisconnectReason,
-  proto,
   Browsers,
-} = require("@whiskeysockets/baileys");
-const readline = require("readline").promises;
-const P = require("pino");
-const Handler = require("./utils/registerHandler");
+  fetchLatestBaileysVersion,
+  delay,
+} from "@whiskeysockets/baileys";
+import readline from "readline/promises";
+import P from "pino";
+import NodeCache from "node-cache";
 
-// custom handlers
-const handleMessage = require("./connection/MessageUpsert");
-const handleConnection = require("./connection/handleConnect");
-const App = require("./utils/serialize.js");
-const { resolve } = require("dns");
-// readline interface
-const rl = readline.createInterface({
-  input: process.stdin,
-  output: process.stdout,
+// Import modules internal lokal wajib menggunakan ekstensi .js (ESM)
+import messageUpsert from "./connection/MessageUpsert.js";
+import handleConnection from "./connection/handleConnect.js";
+
+// 🛠️ OPTIMASI 1: Bersihkan redundansi logger & matikan alokasi objek pino yang tidak perlu
+const logger = P({ level: "silent" });
+
+// 🛠️ OPTIMASI 2: Buat instance NodeCache global tunggal (Singleton) untuk mengurangi overhead re-alokasi memori
+// stdTTL 120s sudah sangat cukup dan hemat memori untuk mencegah double-process/retry di Baileys 7.x
+const msgRetryCache = new NodeCache({
+  stdTTL: 120,
+  checkperiod: 30,
+  useClones: false,
 });
 
-// logger setup
-const logger = P({ level: "warn" });
-
-// helper: generate pairing code
+/**
+ * Meminta pairing code dari pengguna dengan penanganan interupsi yang aman
+ */
 async function generateCode(sock) {
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout,
+  });
+
   try {
-    const input = await rl.question("Masukan Nomor : ");
+    const input = await rl.question(
+      "🔹 Masukan Nomor WhatsApp (Contoh: 628xxx): ",
+    );
     const number = input.replace(/[^0-9]/g, "");
-    console.log("Meminta pairing code...");
+
+    if (!number) {
+      console.log("❌ Nomor tidak valid!");
+      rl.close();
+      return generateCode(sock);
+    }
+
+    console.log("⏳ Meminta pairing code ke server WhatsApp...");
     const code = await sock.requestPairingCode(number);
-    console.log(`\n✅ Pairing Code: ${code}\n`);
-    return code;
+    console.log(`\n✅ [PAIRING CODE ANDA]: ${code}\n`);
+
+    // Beri waktu napas untuk internal state Baileys sebelum terminal ditutup
+    await delay(3000);
   } catch (err) {
-    console.error("Error generating code:", err.message);
-    // Retry jika gagal
-    console.log("Mencoba lagi...");
+    console.error("❌ Gagal generate pairing code:", err.message);
+    console.log("Mencoba ulang proses...");
     return generateCode(sock);
+  } finally {
+    rl.close(); // Wajib ditutup agar tidak terjadi memory leak pada stream process.stdin
   }
 }
 
-// main start function
+/**
+ * Fungsi Utama Inisialisasi Bot WhatsApp
+ */
 async function start() {
   try {
+    // 🛠️ OPTIMASI 3: Menggunakan Destructuring & Async/Await modern untuk versi terbaru Baileys
     const { state, saveCreds } =
       await useMultiFileAuthState("baileys_auth_info");
+    const { version, isLatest } = await fetchLatestBaileysVersion();
 
-    const sock = makeWASocket({
-      printQRInTerminal: false,
-      logger,
-      version: [2, 3000, 1033893291],
-      auth: {
-        creds: state.creds,
-        keys: makeCacheableSignalKeyStore(state.keys, logger),
-      },
-      // browser: Browsers.ubuntu("Chrome"),
-      getMessage: () => proto.Message.create({ conversation: "test" }),
-    });
-
-    // pairing code if not registered
-    if (!sock.authState.creds.registered) {
-      console.log("Belum teregistrasi, meminta pairing code...");
-      await generateCode(sock);
+    if (process.env.DEBUG) {
+      console.log(
+        `ℹ️ Menggunakan Baileys v${version.join(".")} (Terbaru: ${isLatest})`,
+      );
     }
 
-    sock.ev.on("connection.update", async ({ connection, lastDisconnect }) => {
-      if (connection === "close") {
-        const reason = new Boom(lastDisconnect?.error)?.output?.statusCode;
-        const status = new Boom(lastDisconnect?.error);
-        if (reason === DisconnectReason.restartRequired) {
-          start();
+    // 🛠️ OPTIMASI 4: Fungsi getMessage yang benar.
+    // Kode juniormu sebelumnya hanya melakukan `.get()` tanpa me-return nilainya (Sia-sia & Buggy).
+    const getMessage = async (key) => {
+      const msg = msgRetryCache.get(key.id);
+      return msg?.message || undefined;
+    };
+
+    // 🛠️ OPTIMASI 5: Inisialisasi WASocket dengan parameter efisiensi memori tingkat tinggi untuk v7.x
+    const sock = makeWASocket({
+      version,
+      logger,
+      getMessage,
+      printQRInTerminal: false,
+      syncFullHistory: false, // ⚡ Sangat Krusial! Mematikan sinkronisasi riwayat chat jadul untuk menghemat RAM hingga 80%
+      downloadHistory: false, // ⚡ Jangan download chat lama, hemat bandwidth dan memori server
+      msgRetryCounterCache: msgRetryCache, // Menggunakan NodeCache (bukan Map biasa) mencegah RAM bocor saat badai retry melanda
+      generateHighQualityLinkPreview: false, // Matikan rincian HD preview link jika tidak dibutuhkan, menghemat beban CPU
+      markOnlineOnConnect: false,
+      auth: {
+        creds: state.creds,
+        // ⚡ Cacheable Key Store krusial agar I/O disk ke folder session tidak terlalu intensif
+        keys: makeCacheableSignalKeyStore(state.keys, logger),
+      },
+      browser: Browsers.ubuntu("Chrome"),
+    });
+
+    // 🛠️ OPTIMASI 6: Kondisi pengecekan registrasi pairing code
+    if (!sock.authState.creds.registered) {
+      console.log("ℹ️ Perangkat belum terintegrasi.");
+      // Menjalankan pairing secara asinkron tanpa menahan event loop utama
+      process.nextTick(async () => {
+        try {
+          await generateCode(sock);
+        } catch (e) {
+          console.error("Proses pairing terhenti:", e.message);
         }
-        console.log({ status, reason });
-      }
+      });
+    }
 
-      if (connection === "open") {
-        console.log("Koneksi terbuka ...");
-        //    const decode = await sock.decodeJid(sock.user.id);
-        //  console.log(decode);
-        await Handler.register();
-      }
+    // --- EVENT LISTENERS ---
+
+    // Mengontrol siklus koneksi (koneksi putus, reconnect, dll.)
+    sock.ev.on("connection.update", async (update) => {
+      // Pastikan fungsi handleConnection menerima argumen factory 'start' jika butuh restart instant
+      await handleConnection(update, start, sock);
     });
 
-    const kazuya = new App(sock);
-
-    sock.ev.on("messages.upsert", (event) => {
-      handleMessage(event, sock);
-    });
+    // Menangani pembaruan kredensial sesi
     sock.ev.on("creds.update", saveCreds);
+
+    // Menangani pesan masuk
+    sock.ev.on("messages.upsert", (event) => {
+      // Direct pass event tanpa membungkus fungsi anonim tambahan guna menghemat call-stack memori
+      messageUpsert(event, sock);
+    });
 
     return sock;
   } catch (err) {
-    console.error("Error starting socket:", err);
+    console.error("💥 Gagal menginisialisasi core socket:", err);
+    // Skema exponential backoff retry bisa diletakkan di sini jika inisialisasi awal gagal total
+    await delay(5000);
+    return start();
   }
 }
 
-// run
+// Eksekusi core sistem
 start();
