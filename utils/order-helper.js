@@ -5,76 +5,101 @@ import ppob from "./gateway.js";
 const userLocks = new Set();
 
 export const createOrderSecure = async (
-  sock,
   m,
-  targetUserId,
+  phoneUser,
   kodeProduk,
   nomorTujuan,
   hargaProduk,
+  isMultiOrder = false,
 ) => {
-  if (userLocks.has(targetUserId)) {
+  if (userLocks.has(phoneUser)) {
+    if (process.env.DEBUG)
+      console.log(
+        `-> [DEBUG-LOCK] User ${phoneUser} terkunci transaksi sebelumnya.`,
+      );
     return m.reply(
       "⏳ Transaksi Anda sebelumnya sedang diproses. Mohon tunggu!",
     );
   }
-  userLocks.add(targetUserId);
+  userLocks.add(phoneUser);
 
   const reffId = `TRX${Date.now()}${Math.floor(1000 + Math.random() * 9000)}`;
 
   try {
+    if (process.env.DEBUG)
+      console.log(
+        `-> [DEBUG-ORDER] Memulai database check untuk ${phoneUser} -> ${kodeProduk}.${nomorTujuan}`,
+      );
     let successCreatedTrx = null;
 
-    // 🛡️ ANTI-FRAUD: Pindahkan Saldo Utama ke Saldo Hold (Mekanisme Locking Finansial)
-    await db.transaction(async (tx) => {
-      const userTable = db._.fullSchema.user;
+    const userTable = db._.fullSchema.user;
+    const transaksiTable = db._.fullSchema.transaksi;
 
-      const user = await tx
-        .select()
-        .from(userTable)
-        .where(eq(userTable.id, targetUserId))
-        .get();
-      if (!user) throw new Error("USER_NOT_FOUND");
-      if (user.saldo < hargaProduk) throw new Error("INSUFFICIENT_BALANCE");
+    const user = await db
+      .select()
+      .from(userTable)
+      .where(eq(userTable.phone, phoneUser))
+      .get();
 
-      // Potong saldo utama, tambahkan ke saldo_hold secara bersamaan (Atomic)
-      const [updatedUser] = await tx
+    if (!user) throw new Error("USER_NOT_FOUND");
+    if (user.saldo < hargaProduk) throw new Error("INSUFFICIENT_BALANCE");
+
+    db.transaction((tx) => {
+      const updatedUser = tx
         .update(userTable)
         .set({
           saldo: sql`${userTable.saldo} - ${hargaProduk}`,
-          saldo_hold: sql`${userTable.saldo_hold} + ${hargaProduk}`, // 💡 Saldo diamankan di sini
+          saldo_hold: sql`${userTable.saldo_hold} + ${hargaProduk}`,
         })
         .where(
           and(
-            eq(userTable.id, targetUserId),
+            eq(userTable.phone, phoneUser),
             gte(userTable.saldo, hargaProduk),
           ),
         )
-        .returning();
+        .returning()
+        .get();
 
       if (!updatedUser) throw new Error("RACE_CONDITION_DETECTED");
 
-      // Catat transaksi pending
-      const transaksiTable = db._.fullSchema.transaksi;
-      [successCreatedTrx] = await tx
+      successCreatedTrx = tx
         .insert(transaksiTable)
         .values({
           reff_id: reffId,
-          user_id: targetUserId,
+          user_id: user.id,
           produk: kodeProduk,
           tujuan: nomorTujuan,
           harga: hargaProduk,
           status: "pending",
         })
-        .returning();
+        .returning()
+        .get();
     });
 
     if (!successCreatedTrx) throw new Error("FAILED_TO_SAVE_TRX");
 
-    await m.reply(
-      `⏳ *TRANSAKSI DIPROSES*\n\nSaldo Anda sebesar Rp ${hargaProduk.toLocaleString("id-ID")} telah dibekukan sementara untuk transaksi ini.\nRefID: \`${reffId}\``,
-    );
+    if (!isMultiOrder) {
+      if (process.env.DEBUG)
+        console.log(
+          `-> [DEBUG-REPLY] Mengirim teks info hold untuk order tunggal.`,
+        );
+      // await m.reply(
+      //   `⏳ *TRANSAKSI DIPROSES*\n\nSaldo Anda sebesar Rp ${hargaProduk.toLocaleString("id-ID")} telah dibekukan sementara untuk transaksi ini.\nRefID: \`${reffId}\``,
+      //   false,
+      // );
+      //
+      await m.react();
+    } else {
+      if (process.env.DEBUG)
+        console.log(
+          `-> [DEBUG-SILENT] Transaksi diproses senyap (Mode Multi-Order) untuk RefID: ${reffId}`,
+        );
+    }
 
-    // Kirim ke server pusat PPOB
+    if (process.env.DEBUG)
+      console.log(
+        `-> [DEBUG-GATEWAY] Menghubungi API PPOB untuk RefID: ${reffId}`,
+      );
     const apiResponse = await ppob.create_trx(reffId, kodeProduk, nomorTujuan);
 
     if (!apiResponse || apiResponse.status === false) {
@@ -82,35 +107,41 @@ export const createOrderSecure = async (
         `GATEWAY_REJECTED: ${apiResponse?.message || "Gangguan produk"}`,
       );
     }
+
+    return { success: true, reffId };
   } catch (error) {
-    console.error("💥 [ORDER_FAILED]:", error.message);
+    if (process.env.DEBUG)
+      console.error(
+        "💥 [DEBUG-ERROR] Gagal pada createOrderSecure:",
+        error.message,
+      );
 
     if (error.message.startsWith("GATEWAY_REJECTED")) {
       const rincian = error.message.replace("GATEWAY_REJECTED: ", "");
-      // Jika ditolak di awal oleh server pusat, lepaskan hold saldo secara instan
       await releaseHoldSaldo(
-        targetUserId,
+        phoneUser,
         hargaProduk,
         reffId,
         "failed",
         rincian,
-        m,
+        isMultiOrder ? null : m,
       );
+      throw new Error(rincian);
     } else if (error.message === "INSUFFICIENT_BALANCE") {
-      m.reply("❌ Transaksi gagal! Saldo Anda tidak mencukupi.");
+      if (!isMultiOrder)
+        m.reply("❌ Transaksi gagal! Saldo Anda tidak mencukupi.");
+      throw new Error("SALDO_TIDAK_CUKUP");
     } else {
-      m.reply("❌ Terjadi kesalahan internal sistem.");
+      if (!isMultiOrder) m.reply("❌ Terjadi kesalahan internal sistem.");
+      throw new Error(error.message);
     }
   } finally {
-    userLocks.delete(targetUserId);
+    userLocks.delete(phoneUser);
   }
 };
 
-/**
- * Helper internal untuk melepas hold saldo jika server pusat langsung menolak di awal
- */
 const releaseHoldSaldo = async (
-  userId,
+  phoneUser,
   harga,
   reffId,
   statusFinal,
@@ -118,28 +149,29 @@ const releaseHoldSaldo = async (
   m,
 ) => {
   try {
-    await db.transaction(async (tx) => {
-      const userTable = db._.fullSchema.user;
-      const transaksiTable = db._.fullSchema.transaksi;
+    const userTable = db._.fullSchema.user;
+    const transaksiTable = db._.fullSchema.transaksi;
 
-      // Kembalikan dari hold ke saldo utama
-      await tx
-        .update(userTable)
+    db.transaction((tx) => {
+      tx.update(userTable)
         .set({
           saldo: sql`${userTable.saldo} + ${harga}`,
           saldo_hold: sql`${userTable.saldo_hold} - ${harga}`,
         })
-        .where(eq(userTable.id, userId));
+        .where(eq(userTable.phone, phoneUser))
+        .run();
 
-      await tx
-        .update(transaksiTable)
+      tx.update(transaksiTable)
         .set({ status: statusFinal })
-        .where(eq(transaksiTable.reff_id, reffId));
+        .where(eq(transaksiTable.reff_id, reffId))
+        .run();
     });
 
-    m.reply(
-      `❌ *TRANSAKSI GAGAL PUSAT*\n\nAlasan: ${alasan}\n💰 Saldo hold telah dikembalikan ke saldo utama.`,
-    );
+    if (m) {
+      m.reply(
+        `❌ *TRANSAKSI GAGAL PUSAT*\n\nAlasan: ${alasan}\n💰 Saldo hold telah dikembalikan ke saldo utama.`,
+      );
+    }
   } catch (e) {
     console.error("🚨 [CRITICAL_RELEASE_HOLD_ERROR]:", e.message);
   }

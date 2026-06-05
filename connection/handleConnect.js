@@ -7,6 +7,9 @@ import PoolingWorker from "../utils/polling-worker.js";
 let reconnectAttempts = 0;
 const MAX_RECONNECT_ATTEMPTS = 5;
 
+// Singleton instance untuk Worker agar tidak terjadi memory leak saat reconnect
+let globalPoolingWorker = null;
+
 /**
  * Menangani siklus pembaruan koneksi WhatsApp (Baileys v7.x)
  * @param {import('@whiskeysockets/baileys').ConnectionState} update
@@ -17,16 +20,13 @@ const handleConnection = async (update, fnStart, sock = null) => {
   try {
     const { connection, lastDisconnect, qr } = update;
 
-    // 🛠️ OPTIMASI 1: Tampilkan log QR secara ringkas jika fitur pairing code tidak digunakan / fallback
     if (qr) {
       console.log(
         "ℹ️ [SISTEM]: QR Code baru terdeteksi. Silakan scan jika diperlukan.",
       );
     }
 
-    // --- KONDISI 1: KONEKSI DITUTUP (CLOSE) ---
     if (connection === "close") {
-      // Ambil kode status error menggunakan Boom secara aman
       const errorReason = lastDisconnect?.error;
       const statusCode =
         errorReason instanceof Boom
@@ -35,21 +35,18 @@ const handleConnection = async (update, fnStart, sock = null) => {
 
       console.log(`⚠️ [KONEKSI]: Terputus. Alasan status code: ${statusCode}`);
 
-      // 🛠️ OPTIMASI 2: Bersihkan event listeners dari soket lama agar tidak terjadi memory leak (kebocoran RAM)
       if (sock?.ev) {
         sock.ev.removeAllListeners("connection.update");
         sock.ev.removeAllListeners("messages.upsert");
         sock.ev.removeAllListeners("creds.update");
       }
 
-      // 🛠️ OPTIMASI 3: Percabangan evaluasi alasan pemutusan (Baileys v7 Best Practices)
       switch (statusCode) {
         case DisconnectReason.loggedOut:
           console.error(
             "❌ [OTENTIKASI]: Perangkat telah keluar (Logged Out). Hapus folder session dan scan ulang!",
           );
           reconnectAttempts = 0; // Reset counter
-          // Jangan panggil fnStart() di sini untuk mencegah loop koneksi mati
           break;
 
         case DisconnectReason.banned:
@@ -75,16 +72,14 @@ const handleConnection = async (update, fnStart, sock = null) => {
           break;
 
         default:
-          // 🛠️ OPTIMASI 4: Terapkan Exponential Backoff untuk alasan umum (RTO, Stream Errored, Connection Lost, Restart Required)
           reconnectAttempts++;
           if (reconnectAttempts > MAX_RECONNECT_ATTEMPTS) {
             console.error(
               `🛑 [CRASH]: Reconnect gagal setelah ${MAX_RECONNECT_ATTEMPTS} kali percobaan. Berhenti untuk keamanan server.`,
             );
-            process.exit(1); // Matikan proses agar PM2 / Docker bisa melakukan fresh restart bersih
+            process.exit(1);
           }
 
-          // Jeda waktu reconnect bertambah lama seiring jumlah kegagalan (e.g., 5s, 10s, 15s...) untuk menghemat CPU/RAM
           const backoffDelay = Math.min(reconnectAttempts * 5000, 30000);
           console.log(
             `🔄 [SISTEM]: Mencoba menyambung ulang dalam ${backoffDelay / 1000} detik... (Percobaan ${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS})`,
@@ -117,8 +112,15 @@ const handleConnection = async (update, fnStart, sock = null) => {
           "ℹ️ [SISTEM]: Plugin sudah dimuat sebelumnya. Melewati registrasi ulang.",
         );
       }
-      const worker = new PoolingWorker(sock);
-      worker.start();
+
+      // 🛠️ OPTIMASI 6: Menjalankan worker hanya 1 kali, sisanya cukup update socket
+      if (!globalPoolingWorker) {
+        globalPoolingWorker = new PoolingWorker(sock);
+        globalPoolingWorker.start();
+      } else {
+        console.log("🔄 [POOLING]: Memperbarui koneksi socket pada worker...");
+        globalPoolingWorker.sock = sock;
+      }
     }
   } catch (e) {
     console.error(

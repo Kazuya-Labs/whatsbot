@@ -1,31 +1,42 @@
+import { eq } from "drizzle-orm";
 import { Database } from "../utils/db-helper.js";
 import ppob from "../utils/gateway.js";
 
-const userService = new Database("user"); // Hubungkan ke tabel user di SQLite
+const userService = new Database("user");
+const transaksiService = new Database("transaksi");
 
 const execute = async ({ m, isOwner }) => {
   try {
-    let namaUser = m.name;
-    let statusUser = "Aktif";
-    let pointUser = 0;
     let saldoUser = 0;
-    let tipeAkun = "User Biasa";
+    let userIdText = "";
+    let totalTransaksiHariIni = 0;
+    let totalNominalHariIni = 0;
 
-    // 🛠️ LOGIKA 1: Jika Pengirim adalah OWNER (Ambil dari API Gateway Ppob)
+    const todayStr = new Date().toISOString().split(" ")[0];
+    const data_trx = (await transaksiService.query()) || [];
+
     if (isOwner) {
       const { data } = await ppob.profile();
-      namaUser = data.nama || m.name;
-      statusUser = data.aktif ? "Aktif" : "Non-Aktif";
-      pointUser = data.point || 0;
       saldoUser = data.saldo || 0;
-      tipeAkun = "Owner (Pusat)";
-    }
-    // 🛠️ LOGIKA 2: Jika Pengirim adalah USER BIASA (Ambil dari Database SQLite)
-    else {
-      // Cari data user berdasarkan nomor WhatsApp (m.sender)
+      userIdText = "OWNER";
+
+      const filteredTrx = data_trx.filter((trx) => {
+        if (!trx.created_at) return false;
+        const trxDate = trx.created_at.split(" ")[0];
+        return trxDate === todayStr && trx.status === "success";
+      });
+
+      totalTransaksiHariIni = filteredTrx.length;
+      totalNominalHariIni = filteredTrx.reduce(
+        (sum, trx) => sum + (trx.harga || 0),
+        0,
+      );
+    } else {
+      const parseNumber = m.senderJid.split("@")[0];
+
       const userData = await userService
         .query()
-        .where((table, { eq }) => eq(table.phone, m.sender.split("@")[0]))
+        .where(eq(userService.table.phone, parseNumber))
         .get();
 
       if (!userData) {
@@ -33,16 +44,41 @@ const execute = async ({ m, isOwner }) => {
       }
 
       saldoUser = userData.saldo || 0;
-      // Kolom lain bisa disesuaikan atau dibuat default statis jika belum ada di tabel SQLite
+      userIdText = userData.id || parseNumber;
+
+      const filteredTrx = data_trx.filter((trx) => {
+        if (!trx.created_at) return false;
+        const trxDate = trx.created_at.split(" ")[0];
+        return (
+          trxDate === todayStr &&
+          trx.user_id === userData.id &&
+          trx.status === "success"
+        );
+      });
+
+      totalTransaksiHariIni = filteredTrx.length;
+      totalNominalHariIni = filteredTrx.reduce(
+        (sum, trx) => sum + (trx.harga || 0),
+        0,
+      );
     }
 
-    // Susun template pesan text wrap
-    const text_wrap = `👤 *PROFIL AKUN* (${tipeAkun})
-    
-▪️ Nama : ${namaUser}
-▪️ Status : ${statusUser}
-▪️ Point : ${pointUser}
-▪️ Saldo Tersedia : Rp ${saldoUser.toLocaleString("id-ID")}`;
+    const text_wrap = `💸 ɪɴғᴏʀᴍᴀsɪ sᴀʟᴅᴏ
+
+🆔 ɪᴅ: ${userIdText}
+💰 sᴀʟᴅᴏ: Rp ${saldoUser.toLocaleString("id-ID")}
+
+🚀 ᴛᴏᴛᴀʟ ᴘᴇᴍᴀᴋᴀɪᴀɴ ʜᴀʀɪ ɪɴɪ
+
+Rp ${totalNominalHariIni.toLocaleString("id-ID")} (${totalTransaksiHariIni} ᴛʀᴀɴsᴀᴋsɪ)
+
+━━━━━━━━━━━━━━━
+
+🤩sɪʟᴀᴋᴀɴ ᴄʜᴀᴛ ᴍɪᴍɪɴ ᴜɴᴛᴜᴋ ᴅᴇᴘᴏsɪᴛ
+☎️ 087875704129
+
+✨ ᴛᴇʀɪᴍᴀ ᴋᴀsɪʜ ᴛᴇʟᴀʜ ᴍᴇɴɢɢᴜɴᴀᴋᴀɴ ʟᴀʏᴀɴᴀɴ ᴋᴀᴍɪ
+🩵 sᴇᴍᴏɢᴀ sᴜᴋsᴇs sᴇʟᴀʟᴜ!`;
 
     await m.reply(text_wrap.trim());
   } catch (error) {
@@ -52,6 +88,6 @@ const execute = async ({ m, isOwner }) => {
 };
 
 export default {
-  names: ["cek-saldo", "profile"],
+  names: ["saldo"],
   execute,
 };

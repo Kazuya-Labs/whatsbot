@@ -1,10 +1,21 @@
 import { delay, getContentType } from "@whiskeysockets/baileys";
 import Handler from "../utils/registerHandler.js";
+import { handlerProduk } from "../bussines-logic/index.js";
+import NodeCache from "node-cache";
 
-global.owner = ["628123456789@s.whatsapp.net", "628987654321@s.whatsapp.net"];
+global.owner = [
+  "6287875704129@s.whatsapp.net",
+  "62882005824862@s.whatsapp.net",
+];
 
 const MSG_CACHE = new Map();
 const CACHE_TTL = 5000;
+
+const groupcache = new NodeCache({
+  stdTTL: 600,
+  checkperiod: 60,
+  useClones: false,
+});
 
 const cleanCache = () => {
   const now = Date.now();
@@ -22,13 +33,33 @@ const getText = (msg) =>
   msg?.videoMessage?.caption ??
   null;
 
+const cacheGroup = async (sock, jid) => {
+  let cache = groupcache.get(jid);
+  if (cache) return cache;
+
+  try {
+    const metadata = await sock.groupMetadata(jid);
+    if (metadata) {
+      groupcache.set(jid, metadata);
+      return metadata;
+    }
+  } catch (err) {
+    console.error(`💥 [CACHE_GROUP_ERR] JID: ${jid}:`, err.message);
+  }
+  return null;
+};
+
 export default async function messageUpsert({ messages, type }, sock) {
   if (type !== "notify" || !messages?.length) return;
 
   const upsert = messages[0];
   const { key, message, pushName, messageTimestamp, broadcast } = upsert;
+  if (
+    key.remoteJid === "status@broadcast" ||
+    key.chatJid === "status@broadcast"
+  )
+    return;
 
-  // Cegah double process
   if (MSG_CACHE.has(key.id)) return;
   MSG_CACHE.set(key.id, Date.now());
 
@@ -37,13 +68,21 @@ export default async function messageUpsert({ messages, type }, sock) {
     const contentType = getContentType(message);
     const text = getText(message);
 
-    // Object m dibikin flat, hindari JSON.stringify buat log kecuali debug
+    let senderJid = null;
+    if (key.addressingMode === "lid") {
+      senderJid = key.remoteJidAlt || null;
+    } else {
+      senderJid = chatJid.endsWith("@g.us")
+        ? key.participant
+        : (key.remoteJid ?? null);
+    }
+
     const m = {
       key,
       chatJid,
       chatLid: key.remoteJidAlt ?? chatJid,
       sender: key.participant ?? key.remoteJid,
-      senderLid: key.participantAlt ?? null,
+      senderJid: senderJid,
       name: pushName ?? "",
       broadcast: broadcast ?? false,
       isGroup: chatJid.endsWith("@g.us"),
@@ -80,7 +119,7 @@ export default async function messageUpsert({ messages, type }, sock) {
         }
 
         return sock.sendMessage(
-          m.chatLid,
+          m.chatJid,
           {
             text,
             mentions: mentions.length > 0 ? mentions : undefined,
@@ -94,25 +133,42 @@ export default async function messageUpsert({ messages, type }, sock) {
         );
       }
     };
-    // Log ringan, hindari JSON.stringify full object biar hemat CPU
-    if (process.env.DEBUG) {
-      console.log(`[${m.contentType}] ${m.name}: ${m.text}`);
-    }
 
-    const isOwner = global.owner.includes(m.sender);
+    m.react = async (emoji = "⏳") => {
+      await sock.sendMessage(m.key.remoteJid, {
+        react: {
+          text: emoji,
+          key: m.key,
+        },
+      });
+    };
 
+    const isOwner = global.owner.includes(m.senderJid);
     let isAdmin = false;
+
     if (m.isGroup) {
-      try {
-        const groupMetadata = await sock.groupMetadata(m.chatJid);
+      const groupMetadata = await cacheGroup(sock, m.chatJid);
+      if (groupMetadata) {
         const participants = groupMetadata.participants || [];
-        // Cari pengirim di dalam daftar partisipan grup yang memiliki status admin/superadmin
         const member = participants.find((p) => p.id === m.sender);
-        isAdmin = member?.admin === "admin" || member?.admin === "superadmin";
-      } catch (e) {
-        console.error("Gagal mengambil metadata grup:", e.message);
+
+        if (member) {
+          m.senderJid = member.id || m.senderJid;
+          isAdmin = member.admin === "admin" || member.admin === "superadmin";
+        }
       }
     }
+
+    const timeLog = new Date(m.timestamp * 1000).toLocaleTimeString("id-ID");
+    const logType = m.isGroup ? "GROUP" : "PRIVATE";
+    const logSender = m.senderJid ? m.senderJid.split("@")[0] : "Unknown";
+    const logContent = m.text
+      ? m.text.replace(/\r?\n/g, " ")
+      : `[${m.contentType}]`;
+
+    console.log(
+      `📡 [${timeLog}] [${logType}] | 👤 ${m.name} (${logSender}) ➔ ${logContent}`,
+    );
 
     if (m.command) {
       await Handler.executeFn(m.command, {
@@ -123,6 +179,8 @@ export default async function messageUpsert({ messages, type }, sock) {
         isAdmin,
       });
     }
+
+    handlerProduk(m);
   } catch (err) {
     console.error("messageUpsert error:", err);
   }

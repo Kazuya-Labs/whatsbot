@@ -47,7 +47,7 @@ class Ppob {
   async create_trx(refId, kode_produk, tujuan) {
     try {
       const { data } = await apiClient.post("/transaction", {
-        refId,
+        refid: refId,
         kode_produk,
         tujuan,
       });
@@ -63,10 +63,9 @@ class Ppob {
   async status_trx(refId) {
     try {
       const { data } = await apiClient.get("/status", {
-        params: { refId },
+        params: { refid: refId },
       });
 
-      // Baileys & Drizzle membutuhkan kepastian status boolean yang valid
       if (!data || data.status === false) {
         throw new Error(
           data?.message || "Status transaksi menunjukkan kegagalan.",
@@ -93,6 +92,23 @@ class Ppob {
       return data;
     } catch (err) {
       handleAxiosError(err, "profile");
+    }
+  }
+
+  async listProduk(limit = 100) {
+    try {
+      const { data } = await apiClient.get("/products", {
+        params: {
+          limit: null,
+        },
+      });
+      if (!data || data.status === false) {
+        throw new Error(data?.message || "Gagal memuat produk server pusat.");
+      }
+
+      return data;
+    } catch (err) {
+      handleAxiosError(err, "listproduk");
     }
   }
 }
