@@ -1,104 +1,129 @@
-// dependencies
-const { Boom } = require("@hapi/boom");
-const path = require("path");
-const fs = require("fs");
-const {
+import {
   makeWASocket,
   useMultiFileAuthState,
   makeCacheableSignalKeyStore,
-  DisconnectReason,
-  proto,
   Browsers,
-} = require("@whiskeysockets/baileys");
-const readline = require("readline").promises;
-const P = require("pino");
-const Handler = require("./utils/registerHandler");
+  fetchLatestBaileysVersion,
+  delay,
+} from "@whiskeysockets/baileys";
+import readline from "readline/promises";
+import P from "pino";
+import NodeCache from "node-cache";
 
-// custom handlers
-const handleMessage = require("./connection/MessageUpsert");
-const handleConnection = require("./connection/handleConnect");
-const App = require("./utils/serialize.js");
-const { resolve } = require("dns");
-// readline interface
-const rl = readline.createInterface({
-  input: process.stdin,
-  output: process.stdout,
+import messageUpsert from "./connection/MessageUpsert.js";
+import handleConnection from "./connection/handleConnect.js";
+import { registerProduk } from "./bussines-logic/index.js";
+
+const logger = P({ level: "silent" });
+
+const msgRetryCache = new NodeCache({
+  stdTTL: 120,
+  checkperiod: 30,
+  useClones: false,
 });
 
-// logger setup
-const logger = P({ level: "warn" });
-
-// helper: generate pairing code
 async function generateCode(sock) {
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout,
+  });
+
   try {
-    const input = await rl.question("Masukan Nomor : ");
+    const input = await rl.question(
+      "🔹 Masukan Nomor WhatsApp (Contoh: 628xxx): ",
+    );
     const number = input.replace(/[^0-9]/g, "");
-    console.log("Meminta pairing code...");
+
+    if (!number) {
+      console.log("❌ Nomor tidak valid!");
+      rl.close();
+      return generateCode(sock);
+    }
+
+    console.log("⏳ Meminta pairing code ke server WhatsApp...");
     const code = await sock.requestPairingCode(number);
-    console.log(`\n✅ Pairing Code: ${code}\n`);
-    return code;
+    console.log(`\n✅ [PAIRING CODE ANDA]: ${code}\n`);
+
+    await delay(3000);
   } catch (err) {
-    console.error("Error generating code:", err.message);
-    // Retry jika gagal
-    console.log("Mencoba lagi...");
+    console.error("❌ Gagal generate pairing code:", err.message);
+    console.log("Mencoba ulang proses...");
     return generateCode(sock);
+  } finally {
+    rl.close();
   }
 }
 
-// main start function
 async function start() {
   try {
     const { state, saveCreds } =
       await useMultiFileAuthState("baileys_auth_info");
+    const { version, isLatest } = await fetchLatestBaileysVersion();
+
+    if (process.env.DEBUG) {
+      console.log(
+        `ℹ️ Menggunakan Baileys v${version.join(".")} (Terbaru: ${isLatest})`,
+      );
+    }
+
+    const getMessage = async (key) => {
+      const msg = msgRetryCache.get(key.id);
+      return msg?.message || undefined;
+    };
 
     const sock = makeWASocket({
-      printQRInTerminal: false,
+      version,
       logger,
-      version: [2, 3000, 1033893291],
+      getMessage,
+      fromMe: false,
+      printQRInTerminal: false,
+      syncFullHistory: false,
+      downloadHistory: false,
+      msgRetryCounterCache: msgRetryCache,
+      generateHighQualityLinkPreview: false,
+      markOnlineOnConnect: false,
       auth: {
         creds: state.creds,
         keys: makeCacheableSignalKeyStore(state.keys, logger),
       },
-      // browser: Browsers.ubuntu("Chrome"),
-      getMessage: () => proto.Message.create({ conversation: "test" }),
+      browser: Browsers.ubuntu("Chrome"),
     });
 
-    // pairing code if not registered
     if (!sock.authState.creds.registered) {
-      console.log("Belum teregistrasi, meminta pairing code...");
-      await generateCode(sock);
+      console.log("ℹ️ Perangkat belum terintegrasi.");
+      process.nextTick(async () => {
+        try {
+          await generateCode(sock);
+        } catch (e) {
+          console.error("Proses pairing terhenti:", e.message);
+        }
+      });
     }
 
-    sock.ev.on("connection.update", async ({ connection, lastDisconnect }) => {
-      if (connection === "close") {
-        const reason = new Boom(lastDisconnect?.error)?.output?.statusCode;
-        const status = new Boom(lastDisconnect?.error);
-        if (reason === DisconnectReason.restartRequired) {
-          start();
-        }
-        console.log({ status, reason });
-      }
+    registerProduk();
+    setInterval(
+      () => {
+        registerProduk();
+      },
+      1000 * 60 * 60 * 8,
+    );
 
-      if (connection === "open") {
-        console.log("Koneksi terbuka ...");
-        //    const decode = await sock.decodeJid(sock.user.id);
-        //  console.log(decode);
-        await Handler.register();
-      }
+    sock.ev.on("connection.update", async (update) => {
+      await handleConnection(update, start, sock);
     });
 
-    const kazuya = new App(sock);
+    sock.ev.on("creds.update", saveCreds);
 
     sock.ev.on("messages.upsert", (event) => {
-      handleMessage(event, sock);
+      messageUpsert(event, sock);
     });
-    sock.ev.on("creds.update", saveCreds);
 
     return sock;
   } catch (err) {
-    console.error("Error starting socket:", err);
+    console.error("💥 Gagal menginisialisasi core socket:", err);
+    await delay(5000);
+    return start();
   }
 }
 
-// run
 start();

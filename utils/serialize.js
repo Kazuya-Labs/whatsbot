@@ -1,4 +1,4 @@
-const fs = require("fs");
+import fs from "fs";
 
 class App {
   constructor(sock) {
@@ -23,7 +23,7 @@ class App {
     try {
       let mentions = [];
       if (mention.length > 0) {
-        mentions = mention.map(v => "@" + parseInt(v));
+        mentions = mention.map((v) => "@" + parseInt(v));
       }
       await this.readMessages(key);
       const fnMessage = this.sock.sendMessage(jid, { text, mentions });
@@ -39,9 +39,9 @@ class App {
       await this.readMessages(key);
       const fnMessage = this.sock.sendMessage(jid, {
         image: {
-          url: file
+          url: file,
         },
-        caption
+        caption,
       });
       await this.messagewithDelay(fnMessage, delay);
     } catch (error) {
@@ -55,14 +55,14 @@ class App {
         throw new Error({
           status: "error",
           jid,
-          file
+          file,
         });
       await this.readMessages(key);
       const fnMessage = await this.sock.sendMessage(jid, {
         video: {
-          url: file
+          url: file,
         },
-        caption
+        caption,
       });
       return await this.messagewithDelay(fnMessage, delay);
     } catch (error) {
@@ -71,4 +71,4 @@ class App {
   }
 }
 
-module.exports = App;
+export default App;

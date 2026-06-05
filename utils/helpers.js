@@ -1,4 +1,4 @@
-const fs = require("fs");
+import fs from "fs";
 
 const readJson = (file) => {
   try {
@@ -29,7 +29,11 @@ const writeJson = (file, newData) => {
   }
 };
 
-module.exports = {
-  readJson,
-  writeJson,
-};
+/**
+ *
+ * @param {Object} msg - m dari text
+ */
+
+const getFlag = (msg) => msg.text.split("").slice(0).join(" ");
+
+export { writeJson, readJson, getFlag };
