@@ -1,0 +1,37 @@
+{
+  "name": "whatsend",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "tsx index.js",
+    "dev": "tsx index.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devEngines": {
+    "packageManager": {
+      "name": "npm",
+      "version": "^11.9.0",
+      "onFail": "download"
+    }
+  },
+  "type": "module",
+  "dependencies": {
+    "@ryuu-reinzz/button-helper": "^2.2.3",
+    "axios": "^1.18.1",
+    "baileys": "npm:@whiskeysockets/baileys@7.0.0-rc13",
+    "delay": "^7.0.0",
+    "moment-timezone": "^0.6.2",
+    "node-cron": "^4.6.0",
+    "pino": "^10.3.1",
+    "sharp": "^0.35.3"
+  },
+  "devDependencies": {
+    "@types/node": "^26.1.1",
+    "chalk": "^5.6.2",
+    "node-cache": "^5.1.2",
+    "tsx": "^4.23.0"
+  }
+}

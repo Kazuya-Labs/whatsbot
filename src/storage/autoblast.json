@@ -1,0 +1,74 @@
+{
+  "campaigns": {
+    "promo_landing_juli": {
+      "text": "Izin min , ready jasa pembuatan landing page dan bot custom",
+      "footer": "Kazuya Technologies",
+      "cards": [
+        {
+          "title": "😬 Masih Andelin Chat WA Doang buat Jualan?",
+          "body": "Calon customer kabur duluan sebelum sempat nanya harga. Landing page kerja 24 jam, jelasin produk kamu tanpa kamu harus balesin chat satu-satu.\n\nMulai dari Rp499rb, langsung jadi.",
+          "imageUrl": "https://files.catbox.moe/5humbl.png",
+          "buttons": [
+            {
+              "type": "default",
+              "label": "Tertarik",
+              "value": "tertarik bisa konsultasi dulu?"
+            }
+          ]
+        },
+
+        {
+          "title": "🚀 Loading di Bawah 2 Detik, Bukan Janji Kosong",
+          "body": "Kami bikin pakai Astro.js, bukan template WordPress lemot. Ini skor PageSpeed asli project kami, bukan mockup.",
+          "imageUrl": "https://files.catbox.moe/8qnhmc.png",
+          "buttons": [
+            {
+              "type": "url",
+              "label": "Cek Skornya Sendiri",
+              "value": "https://pagespeed.web.dev/analysis/https-kazuyatech-id/ddsbf31k8r?hl=id&form_factor=mobile"
+            }
+          ]
+        },
+        {
+          "title": "⏳ Tinggal 3 Slot Bulan Ini",
+          "body": "Dikerjain langsung sama saya (bukan tim outsource), jadi kualitas terjaga tapi slot dibatasi biar hasil maksimal. Order sekarang, mulai proses minggu ini juga.",
+          "imageUrl": "https://files.catbox.moe/r4e5kn.png",
+          "buttons": [
+            {
+              "type": "url",
+              "label": "Amankan Slot Sekarang",
+              "value": "https://wa.me/6285728153452?text=Halo%20kak%2C%20saya%20mau%20amankan%20slot%20landing%20page%20bulan%20ini"
+            }
+          ]
+        },
+        {
+          "title": "🔍 Coba Search Brand Kami di Google",
+          "body": "Ketik 'Kazuya Technologies' di Google, langsung muncul rangkuman AI yang akurat. Itu karena struktur kode website kami emang dibangun clean & SEO-friendly dari awal — bukan asal jadi.",
+          "imageUrl": "https://files.catbox.moe/qp40xs.png",
+          "buttons": [
+            {
+              "type": "url",
+              "label": "Buktikan Sendiri",
+              "value": "https://www.google.com/search?q=siapa+kazuya+technologies"
+            }
+          ]
+        },
+        {
+          "title": "💬 Konsultasi 15 Menit, Gratis, Tanpa Paksaan Beli",
+          "body": "Cerita aja kebutuhan bisnismu, saya kasih gambaran solusi + estimasi biaya. Ga cocok? Ga masalah, tetep dapet insight gratis.",
+          "imageUrl": "https://files.catbox.moe/qp40xs.png",
+          "buttons": [
+            {
+              "type": "call",
+              "label": "Chat Langsung",
+              "value": "6285728153452"
+            }
+          ]
+        }
+      ],
+      "targets": ["120363407878622278@g.us"],
+      "jeda": 5000,
+      "enabled": true
+    }
+  }
+}
