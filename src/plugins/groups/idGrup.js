@@ -12,7 +12,7 @@ const execute = async ({ m, sock }) => {
       };
     });
 
-    let msg = null
+    let msg = "";
     for (const data of group) {
       msg += `id : ${data.id}\nname : ${data.name}\nmember : ${data.memberCount}`;
     }
@@ -24,6 +24,6 @@ const execute = async ({ m, sock }) => {
 
 export default {
   execute,
-  names: ["cekidgc"],
+  names: ["cekidgc", "cekid"],
   owner: true,
 };
