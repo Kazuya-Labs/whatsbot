@@ -1,5 +1,5 @@
-import { getContentType,jidDecode,proto, S_WHATSAPP_NET } from "baileys";
-import util from "util"; // PENTING: Diperlukan untuk util.inspect pada ESM
+import { getContentType, jidDecode, proto, S_WHATSAPP_NET } from "baileys";
+import util from "util";
 import {
   extractBody,
   getCommand,
@@ -12,9 +12,21 @@ import { executeFn } from "../pluginHandler/index.js";
 import { metadataGroup } from "./utils/groupHelper.js";
 
 // Menggunakan objek bertipe Set untuk efisiensi pengecekan O(1)
-const ownerNumber = new Set(["6285728153452", "62882005824862"])
+const ownerNumber = new Set(["6285728153452", "62882005824862"]);
 
 const locked = new Set();
+
+/**
+ * Helper untuk dekode / membersihkan Device JID (misal: 628xxx:12@s.whatsapp.net -> 628xxx@s.whatsapp.net)
+ */
+const decodeJid = (jid) => {
+  if (!jid) return jid;
+  if (/:\d+@/gi.test(jid)) {
+    const decode = jidDecode(jid) || {};
+    return decode.user && decode.server ? `${decode.user}@${decode.server}` : jid;
+  }
+  return jid;
+};
 
 /**
  * @param {import('baileys').BaileysEventMap['messages.upsert']} ev
@@ -37,22 +49,40 @@ const messageUpsert = async (ev, sock) => {
   try {
     const rawMessage = upsert.message;
 
-    // --- 2. Resolusi sender: wajib @s.whatsapp.net ---
-    const senderJid = resolveSenderJid(key);
-    if (!senderJid) return;
+    // --- 2. Resolusi sender dengan fallback untuk pesan 'fromMe' ---
+    let rawSender = resolveSenderJid(key);
+    if (key.fromMe) {
+      rawSender = sock.user?.id || sock.user?.jid || rawSender;
+    }
+    if (!rawSender) return;
+
+    // Bersihkan Device ID dari JID & ambil nomor/user ID murni
+    const senderJid = decodeJid(rawSender);
+    const senderUser = jidDecode(senderJid)?.user || senderJid.split("@")[0];
 
     // --- 4. Ambil body teks (conversation / caption / text) ---
     const { body, content, contentType } = extractBody(rawMessage);
 
     // --- 5. Parse command ---
     const { text, command } = getCommand(body);
-    let isAdmin, metadata;
-    if (isGroup) {
+
+    // --- 5b. Resolusi Status Grup & Admin (Ditingkatkan) ---
+    const isGroupChat = isGroup(key?.remoteJid);
+    let isAdmin = false;
+    let metadata = null;
+
+    if (isGroupChat) {
       metadata = await metadataGroup(sock, key.remoteJid);
-      isAdmin = metadata?.participants?.find(
-        (participant) => participant.phoneNumber == senderJid,
-      ).admin;
+      if (metadata?.participants) {
+        const participant = metadata.participants.find((p) => {
+          const pUser = jidDecode(decodeJid(p.id))?.user || p.phoneNumber;
+          return pUser === senderUser;
+        });
+        // Gunakan Optional Chaining & Boolean agar tidak melempar TypeError
+        isAdmin = Boolean(participant?.admin || participant?.superadmin);
+      }
     }
+
     // --- 6. Susun object m ---
     const m = {
       key,
@@ -63,11 +93,11 @@ const messageUpsert = async (ev, sock) => {
       fromMe: key?.fromMe,
       contentType,
       content,
-      isOwner: ownerNumber.has(jidDecode(senderJid).user),
+      isOwner: ownerNumber.has(senderUser),
       body,
       metadata,
       isAdmin,
-      isGroup: isGroup(key?.remoteJid),
+      isGroup: isGroupChat,
       text,
       command,
       mimeType: content?.mimeType || null,
@@ -79,17 +109,16 @@ const messageUpsert = async (ev, sock) => {
       ].includes(contentType),
     };
 
-    // --- 7. Fungsi m.reply Super Bandel & Cerdas ---
+    // --- 7. Fungsi m.reply ---
     m.reply = async (contentToReply, options = {}) => {
       try {
         if (contentToReply === undefined || contentToReply === null) return;
 
         let messageOptions = {};
 
-        // A. JIKA INPUT ADALAH BUFFER (Deteksi otomatis tipe file)
+        // A. JIKA INPUT ADALAH BUFFER
         if (Buffer.isBuffer(contentToReply)) {
-          const typeInfo = m.contentType;
-          const mime = m.mimeType;
+          const mime = m.mimeType || "";
 
           if (mime.startsWith("image/")) {
             messageOptions = {
@@ -119,17 +148,15 @@ const messageUpsert = async (ev, sock) => {
         else if (typeof contentToReply === "string") {
           messageOptions = { text: contentToReply };
         }
-        // C. JIKA INPUT ADALAH OBJEK (Struktur kustom Baileys)
+        // C. JIKA INPUT ADALAH OBJEK
         else if (typeof contentToReply === "object") {
           messageOptions = { ...contentToReply };
         }
 
-        // Fitur otomatis mengutip (quoted) pesan asli
         if (options.quoted !== false) {
           messageOptions.quoted = upsert;
         }
 
-        // Gabungkan contextInfo kustom jika ada (misal untuk mention)
         if (options.contextInfo) {
           messageOptions.contextInfo = {
             ...messageOptions.contextInfo,
@@ -148,32 +175,27 @@ const messageUpsert = async (ev, sock) => {
       `from : ${m.sender}\nmessage : ${m.body} \ndate : ${formatDateId(Date.now(), "medium")}`,
     );
 
-    // Jalankan handler eksternal Anda
+    // Jalankan handler eksternal
     executeFn(command, { m, sock });
 
-    // --- 8. Fitur Eval PINAL (Menggunakan > ) ---
+    // --- 8. Fitur Eval (Menggunakan > ) ---
     if (body && body.startsWith(">") && m.isOwner) {
       logs.debug("Menjalankan perintah evaluasi teks (eval)...");
       const scriptToExecute = body.slice(1).trim();
 
       try {
-        // Mengeksekusi string kode JavaScript secara langsung
         let evaluated = eval(scriptToExecute);
 
-        // Jika hasilnya berupa Promise (async), tunggu pemrosesan selesai
         if (evaluated instanceof Promise) {
           evaluated = await evaluated;
         }
 
-        // Jika hasilnya bukan string, ubah menjadi struktur objek visual terformat
         if (typeof evaluated !== "string") {
           evaluated = util.inspect(evaluated, { depth: 2 });
         }
 
-        // Kirim hasil menggunakan m.reply pintar
         await m.reply(evaluated);
       } catch (err) {
-        // Jika kode Javascript yang dimasukkan salah/eror, kirim pesan erornya ke WA
         await m.reply(String(err));
       }
     }
