@@ -1,33 +1,62 @@
 ### 🚀 Release Notes & Changelog
 📝 Ringkasan Perubahan
-Pembaruan ini menghadirkan fitur manajemen target campaign WhatsApp secara dinamis via chat, serta memperbaiki bug krusial pada penanganan pesan di grup yang menyebabkan perintah dari akun bot sendiri (fromMe) gagal terdeteksi.
 
-✨ Detail Perubahan
-## 1. 🚀 Fitur Baru: Dynamic Target Management (addidBlast)
-Command Baru: .addidblast <campaign_id> | <group_jid>
+> Entri terbaru berada di bagian paling atas. **Dilarang mencantumkan kredensial sensitif** pada changelog ini (kode pairing, isi sesi `auth_info_baileys/`, token/API key, `.env`, dump DB, atau nilai `config.json`).
 
-Auto Group Detection: Cukup ketik .addidblast <campaign_id> di dalam grup target.
+## [2026-08-29] — Plugin Menu untuk Semua User + Filter Akses
+### ✨ Fitur Baru
+- Command `menu` / `help` dengan akses `all` — bisa dipakai siapa saja.
+- `menu` menampilkan semua perintah terdaftar, dikelompokkan per role (Owner, Admin, Grup, Private, Semua) lengkap dengan deskripsi.
+- Argumen opsional filter: `menu owner|admin|groups|private|all` — hanya menampilkan perintah dari akses tsb; filter tidak dikenal diberi jawaban petunjuk.
+- Registry plugin kini menyimpan `description` tiap command (dipakai menu).
+### 📁 File Terkait
+- src/plugins/all/menu.js (File Baru)
+- src/plugin/load.js (simpan `description` di options)
 
-Safety & Validation:
+## [2026-08-29] — Dokumentasi Pengembang + Penataan Internal
+### 🔧 Perubahan Internal
+- README.md: panduan lengkap untuk developer (setup, konfigurasi, plugin system, storage, util, panduan kontribusi).
+- `.agents/` & `AGENTS.md` di-gitignore dan tidak lagi di-commit (dokumen internal), file lokal tetap ada.
+- Koreksi syarat versi Node menjadi ≥22 (konsisten dengan better-sqlite3 v13).
+### 📁 File Terkait
+- README.md (File Baru)
+- .gitignore
 
-Menolak JID yang bukan merupakan ID grup WhatsApp (@g.us).
+## [2026-08-29] — Konfigurasi Dinamis via config.json
+### ✨ Fitur Baru
+- Nilai hardcode dipindah ke `config.json` dan dibaca **live** tanpa restart (`getConfig`/`isOwner`/`getPrefixes`): daftar owner, prefix command, pesan akses ditolak per role, backdoor eval (dapat dimatikan), jeda default campaign, parameter reconnect, pengaturan socket Baileys, dan prompt pairing.
+- File config tidak valid → otomatis memakai nilai default (tetap jalan).
+### 📁 File Terkait
+- src/utils/config.js (File Baru)
+- config.json
+- src/connection/{index,message,messageBuilder,parse,update}.js, src/plugin/handler.js, src/storage/campaigns.js, src/plugins/owner/autoBlast.js
 
-Mengecek ketersediaan campaign_id di database.
+## [2026-08-29] — Dev Utilities & Refactor Plugin
+### ✨ Fitur Baru
+- Factory `createPlugin` menyeragamkan bentuk plugin (try/catch + log + reply error otomatis).
+- Helpers baru: parse argumen, konversi JID/telepon, kirim media dari URL, reply error standar.
+- Semua plugin refactor memakai `createPlugin`; scaffolder `add:plugin` menghasilkan template berbasis factory.
+### 📁 File Terkait
+- src/utils/{plugin,args,jid,errors,media}.js
+- scripts/addPlugin.js
+- src/plugins/owner/*.js (refactor)
 
-Mencegah duplikasi ID grup dalam satu campaign.
+## [2026-08-29] — Refactor Akses Plugin per Folder
+### 🔧 Perubahan Internal
+- Struktur plugin dikelompokkan per role akses: `src/plugins/{owner,admin,groups,private,all}`.
+- Access otomatis ter-infer dari folder bila plugin tidak menyebutkannya; matriks akses tetap di-enforce di handler.
+### 📁 File Terkait
+- src/plugin/load.js (infer akses dari folder)
+- src/plugins/{owner,admin,groups,private,all}/
 
-Storage Update: Otomatis melakukan write-back ke src/storage/autoblast.json dengan format JSON terstruktur (null, 2).
-
- ## 2. 🐛 Perbaikan Bug: Message Upsert & Self-Command Detection
-Bot Self-Command Fix (fromMe): Memperbaiki kegagalan resolusi JID pengirim saat bot mengeksekusi perintahnya sendiri di dalam grup dengan menambahkan fallback ke sock.user.id.
-
-Fix Logic isGroup: Mengubah evaluasi isGroup agar dipanggil sebagai fungsi isGroup(key?.remoteJid), bukan lagi mengecek eksistensi referensi objek fungsi.
-
-Fix Crash isAdmin: Menggunakan optional chaining (participant?.admin) dan pembersihan Device JID (:xx@s.whatsapp.net) untuk mencegah error TypeError: Cannot read properties of undefined (reading 'admin') yang menghentikan eksekusi pesan.
-
-## 📁 File Terkait
-src/plugins/addidblast.js (File Baru)
-
-src/storage/autoblast.json (Struktur Data Target)
-
-src/handlers/messageUpsert.js (Perbaikan Event Listener & Bug Fix)
+## [2026-08-29] — Implementasi Dasar (PRD)
+### ✨ Fitur Baru
+- Storage SQLite + Drizzle: tabel campaigns/campaign_cards/campaign_targets, migrasi (drizzle-kit) + auto-migrate saat boot.
+- CLI: `add:plugin` (scaffold plugin + akses), `list:plugin` (daftar command), skrip `db:*`.
+- Sistem role akses pada handler (owner/admin/groups/private/all) dengan pesan tolak per role.
+- Layer koneksi Baileys dengan serialize pesan ke objek `m` + `m.reply`.
+### 📁 File Terkait
+- src/storage/{schema,db,campaigns}.js, drizzle/
+- scripts/{addPlugin,listPlugins}.js
+- src/plugin/{handler,load,register}.js
+- src/connection/*
