@@ -1,12 +1,12 @@
 # AGENTS.md
 
-WhatsApp bot built on Baileys (@whiskeysockets/baileys 7.0.0-rc13, pinned via npm alias). Entrypoint: `index.js` (thin boot → `src/connection/index.js`). ESM (`"type": "module"`), plain `.js` + JSDoc — no TypeScript build step. Runs on plain Node ≥18 (`node --watch` needs ≥18; SQLite via `better-sqlite3`).
+WhatsApp bot built on Baileys (@whiskeysockets/baileys 7.0.0-rc13, pinned via npm alias). Entrypoint: `index.js` (thin boot → `src/connection/index.js`). ESM (`"type": "module"`), plain `.js` + JSDoc — no TypeScript build step. Runs on plain Node ≥22 (`node --watch` needs ≥18; SQLite via `better-sqlite3` v13 requires ≥22).
 
 ## Run
 - `npm run dev` — `node --watch index.js` (watch mode, per PRD). `npm start` / `npm test` = plain `node index.js`. No lint/typecheck/test suite exists — the only verification command is `node --check <file>` (see `.agents/rules.md`).
 - Fresh session: unregistered creds prompt a phone number, then a pairing code prints to the terminal (`printQRInTerminal: false`). Session lives in `auth_info_baileys/` (gitignored).
 - Reconnection is self-managed: `src/connection/update.js` re-calls `start()` up to `reconnect.maxAttempts` (default 3, `reconnect.delayMs` delay; the restart fn is injected as a param to avoid circular imports). On `loggedOut` it stops; delete `auth_info_baileys/` and restart to re-pair.
-- Requires Node ≥18 for `node --watch`.
+- Requires Node ≥22 (`node --watch` needs ≥18; better-sqlite3 v13 needs ≥22).
 
 ## CLI tools (PRD `.agents/prd.md`)
 - `npm run add:plugin -- <name> [--access=<owner|admin|groups|private|all>]` — scaffolds `src/plugins/<access>/<name>.js` (validates name/access, overwrite guard, default access `all`). With pnpm: `pnpm run add:plugin <name> --access=owner`.
