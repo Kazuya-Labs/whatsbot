@@ -4,8 +4,14 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "tsx index.js",
-    "dev": "tsx index.js"
+    "dev": "node --watch index.js",
+    "start": "node index.js",
+    "test": "node index.js",
+    "add:plugin": "node scripts/addPlugin.js",
+    "list:plugin": "node scripts/listPlugins.js",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "db:push": "drizzle-kit push"
   },
   "keywords": [],
   "author": "",
@@ -18,20 +24,30 @@
     }
   },
   "type": "module",
+  "imports": {
+    "#connection/*": "./src/connection/*",
+    "#plugin/*": "./src/plugin/*",
+    "#plugins/*": "./src/plugins/*",
+    "#utils/*": "./src/utils/*",
+    "#storage/*": "./src/storage/*"
+  },
   "dependencies": {
     "@ryuu-reinzz/button-helper": "^2.2.3",
     "axios": "^1.18.1",
     "baileys": "npm:@whiskeysockets/baileys@7.0.0-rc13",
+    "better-sqlite3": "^13.0.3",
     "delay": "^7.0.0",
+    "drizzle-orm": "^0.45.2",
     "moment-timezone": "^0.6.2",
     "node-cron": "^4.6.0",
     "pino": "^10.3.1",
     "sharp": "^0.35.3"
   },
   "devDependencies": {
+    "@types/better-sqlite3": "^9.6.0",
     "@types/node": "^26.1.1",
     "chalk": "^5.6.2",
-    "node-cache": "^5.1.2",
-    "tsx": "^4.23.0"
+    "drizzle-kit": "^0.31.10",
+    "node-cache": "^5.1.2"
   }
 }

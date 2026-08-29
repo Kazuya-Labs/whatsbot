@@ -1,14 +1,8 @@
-import {
-  createReadStream,
-  createWriteStream,
-  fsync,
-  readFileSync,
-  writeSync,
-} from "fs";
+import { createReadStream, createWriteStream, readFileSync } from "fs";
 import { stat, access, writeFile } from "fs/promises";
 import { extname } from "path";
 import { pipeline } from "stream";
-import logs from "./logs.js";
+import logs from "./logger.js";
 import sharp from "sharp";
 
 /**

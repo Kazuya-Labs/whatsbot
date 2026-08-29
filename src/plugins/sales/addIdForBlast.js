@@ -1,12 +1,7 @@
-import path from "node:path";
-import fs from "node:fs/promises";
-
-// Sesuaikan path dengan letak file JSON Anda
-const dirpath = path.join(process.cwd(), "src", "storage", "autoblast.json");
+import { addTarget, getCampaign } from "#storage/campaigns.js";
 
 const execute = async ({ m, sock }) => {
   try {
-    // Memisahkan input berdasarkan pemisah "|"
     let [campaignId, groupJid] = m.text.split("|").map((v) => v?.trim());
 
     if (!campaignId) {
@@ -15,47 +10,43 @@ const execute = async ({ m, sock }) => {
       );
     }
 
-    // Jika groupJid tidak diisi secara manual, otomatis gunakan ID chat/grup tempat pesan ini dikirim
+    // Jika groupJid tidak diisi, otomatis gunakan ID chat/grup tempat pesan dikirim
     if (!groupJid) {
       groupJid = m.chat;
     }
 
-    // (Opsional) Validasi memastikan yang ditambahkan adalah ID grup WhatsApp (@g.us)
+    // Validasi: yang ditambahkan harus ID grup WhatsApp (@g.us)
     if (!groupJid.endsWith("@g.us")) {
       return m.reply(
         `Gagal! ID "${groupJid}" bukan merupakan ID Grup WhatsApp yang valid (@g.us).`,
       );
     }
 
-    // 1. Baca file autoblast.json
-    const raw = await fs.readFile(dirpath, "utf-8");
-    const db = JSON.parse(raw);
-
-    // 2. Validasi apakah campaign_id yang diinput ada di database
-    if (!db.campaigns[campaignId]) {
+    // Validasi ketersediaan campaign
+    const campaign = await getCampaign(campaignId);
+    if (!campaign) {
       return m.reply(
         `Campaign dengan ID "${campaignId}" tidak ditemukan di database.`,
       );
     }
 
-    // 3. Validasi apakah ID grup sudah pernah dimasukkan sebelumnya (mencegah duplikat)
-    if (db.campaigns[campaignId].targets.includes(groupJid)) {
+    // Validasi duplikat
+    if (campaign.targets.includes(groupJid)) {
       return m.reply(
         `ID Grup ${groupJid} sudah ada di dalam daftar target campaign "${campaignId}".`,
       );
     }
 
-    // 4. Masukkan ID grup baru ke dalam array targets
-    db.campaigns[campaignId].targets.push(groupJid);
-
-    // 5. Simpan dan tulis ulang perubahan ke dalam file JSON
-    await fs.writeFile(dirpath, JSON.stringify(db, null, 2), "utf-8");
+    const { ok } = await addTarget(campaignId, groupJid);
+    if (!ok) {
+      return m.reply("Terjadi kesalahan pada sistem saat mencoba menyimpan data.");
+    }
 
     m.reply(
-      `✅ *Berhasil!*\n\nID Grup: ${groupJid}\nTelah ditambahkan ke campaign: *${campaignId}*\n\nTotal target saat ini: ${db.campaigns[campaignId].targets.length} grup.`,
+      `✅ *Berhasil!*\n\nID Grup: ${groupJid}\nTelah ditambahkan ke campaign: *${campaignId}*\n\nTotal target saat ini: ${campaign.targets.length + 1} grup.`,
     );
   } catch (error) {
-    console.error("Gagal menambahkan ID ke Autoblast:", error);
+    console.error("Gagal menambahkan ID ke autoblast:", error);
     m.reply("Terjadi kesalahan pada sistem saat mencoba menyimpan data.");
   }
 };

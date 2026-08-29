@@ -1,15 +1,6 @@
-import { getContentType, normalizeMessageContent } from "baileys";
-import NodeCache from "node-cache";
-import util from "util";
+import { getContentType, jidDecode, normalizeMessageContent } from "baileys";
 
-
-const cacheJid = new NodeCache({
-  stdTTL:60,
-  maxKeys:1000,
-  useClones:false,
-})
 /**
- *
  * @param {import('baileys').JidServer} jid
  * @returns {boolean}
  */
@@ -25,25 +16,34 @@ const getCommand = (text = null) => {
 
   const prefixes = ["!", "."];
 
-  // 1. CARA BENAR: Ambil karakter pertama, lalu cek apakah ada di DALAM array
   const firstChar = text.charAt(0);
   const hasPrefix = prefixes.includes(firstChar);
 
-  // Jika tidak memiliki prefix, kembalikan objek kosong agar tidak undefined
   if (!hasPrefix) {
     return { command: null, text: null };
   }
 
-  // 2. Ambil command dan sisa teks
   const [commandWithPrefix, ...newText] = text.split(" ");
-
-  // Hilangkan karakter prefix dari command jika ingin nama command-nya saja (misal: "ping" bukan "!ping")
   const command = commandWithPrefix.slice(1);
 
   return {
-    command: command,
-    text: newText.join(" "), // 3. Gunakan " " agar teks kembali dipisah spasi, bukan koma
+    command,
+    text: newText.join(" "),
   };
+};
+
+/**
+ * Helper untuk dekode / membersihkan Device JID (misal: 628xxx:12@s.whatsapp.net -> 628xxx@s.whatsapp.net)
+ *
+ * @param {string} jid
+ */
+const decodeJid = (jid) => {
+  if (!jid) return jid;
+  if (/:\d+@/gi.test(jid)) {
+    const decode = jidDecode(jid) || {};
+    return decode.user && decode.server ? `${decode.user}@${decode.server}` : jid;
+  }
+  return jid;
 };
 
 /**
@@ -80,8 +80,6 @@ function resolveSenderJid(key) {
  */
 function extractBody(rawMessage) {
   // --- 1. Buka bungkus ephemeral/view-once dulu ---
-  // Tanpa ini, pesan di chat yang punya disappearing message aktif
-  // akan selalu gagal terbaca (contentType-nya "ephemeralMessage", bukan tipe aslinya).
   const message = normalizeMessageContent(rawMessage);
   if (!message) {
     return { contentType: null, content: null, body: "" };
@@ -96,7 +94,7 @@ function extractBody(rawMessage) {
     extendedTextMessage: () => content?.text,
     imageMessage: () => content?.caption,
     videoMessage: () => content?.caption,
-    documentMessage: () => content?.caption, // sebelumnya kelewat
+    documentMessage: () => content?.caption,
   };
 
   if (textSources[contentType]) {
@@ -142,30 +140,9 @@ function extractBody(rawMessage) {
     }
 
     default:
-      // tipe lain (reactionMessage, protocolMessage, stickerMessage, dst)
-      // memang nggak punya teks — return kosong itu wajar, bukan bug
+      // Tipe lain (reactionMessage, protocolMessage, dst) tidak punya teks
       return { contentType, content, body: "" };
   }
 }
 
-/**
- *
- * @param {string} text - bahan eval
- * @param {Object} m
- */
-const evalForDev = async (text, m) => {
-  try {
-    let evaluated = eval(textToEval);
-
-    // Jika hasil eval berupa objek, gunakan util.inspect agar strukturnya terlihat jelas
-    if (typeof evaluated !== "string") {
-      evaluated = util.inspect(evaluated, { depth: 2 }); // depth bisa ditambah sesuai kebutuhan
-    }
-
-    await m.reply(evaluated);
-  } catch (error) {
-    await reply(String(err));
-  }
-};
-
-export { isGroup, getCommand, resolveSenderJid, extractBody, evalForDev };
+export { isGroup, getCommand, decodeJid, resolveSenderJid, extractBody };
