@@ -41,6 +41,7 @@ const loadPlugins = (names, execute, opts = {}) => {
       tag: opts.tag || "user",
       access,
       file: opts.file,
+      description: opts.description,
     };
 
     const pluginData = { execute, options };
