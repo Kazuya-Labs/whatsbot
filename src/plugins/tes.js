@@ -1,21 +1,9 @@
-import { sendButtonMessage } from "../utils/buttonMessage.js";
-import { buildCarouselMessage } from "../utils/carrouselMessage.js";
-import logs from "../utils/logs.js";
+import { buildCarouselMessage } from "#utils/carousel.js";
+import logs from "#utils/logger.js";
 
 const execute = async ({ m, sock }) => {
   try {
     const jid = m.chat;
-
-    // await sendButtonMessage(sock, jid, {
-    //   text: "🔥 Promo top up hari ini! Diskon 10% khusus member.",
-    //   footer: "PPOB Store",
-    //   title: "Promo Spesial",
-    //   buttons: [
-    //     { type: "url", label: "Lihat Katalog", value: "https://tokokamu.com/catalog" },
-    //     { type: "copy", label: "Copy Kode Promo", value: "HEMAT10" },
-    //     { type: "default", label: "Order Sekarang", id: "order_now" },
-    //   ],
-    // });
 
     const msg = await buildCarouselMessage(sock, jid, {
       text: "🔥 Katalog Promo Top Up Minggu Ini",
@@ -45,8 +33,6 @@ const execute = async ({ m, sock }) => {
             },
           ],
         },
-
-        // ...kartu lain
       ],
     });
 

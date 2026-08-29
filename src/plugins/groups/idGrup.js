@@ -1,4 +1,4 @@
-import logs from "../../utils/logs.js";
+import logs from "#utils/logger.js";
 
 const execute = async ({ m, sock }) => {
   try {

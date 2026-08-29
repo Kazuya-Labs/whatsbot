@@ -1,20 +1,20 @@
 // @ts-check
-import makeWASocket, { DisconnectReason } from "baileys";
+import { DisconnectReason } from "baileys";
 import delay from "delay";
-import { starting } from "../../index.js";
 
 let reconnectCount = 0;
 
 /**
  * Mengelola perubahan status koneksi WhatsApp
  * @param {import("baileys").BaileysEventMap['connection.update']} update
- * @param {ReturnType<typeof makeWASocket>} sock
+ * @param {ReturnType<typeof import("baileys").makeWASocket>} sock
+ * @param {() => Promise<void>} onReconnect - fungsi start() yang di-inject untuk menghindari circular import
  */
-const connectionUpdate = async (update, sock) => {
+const connectionUpdate = async (update, sock, onReconnect) => {
   const { connection, lastDisconnect } = update;
 
   if (connection === "close") {
-    // Mengambil kode alasan kenapa koneksi terputus
+    // Ambil kode alasan kenapa koneksi terputus
     // @ts-ignore
     const statusCode = lastDisconnect?.error?.output?.statusCode;
 
@@ -36,10 +36,10 @@ const connectionUpdate = async (update, sock) => {
       return;
     }
 
-    // Panggil kembali fungsi inisialisasi utama untuk membuat koneksi baru
+    // Panggil lagi fungsi inisialisasi utama untuk membuat koneksi baru
     if (reconnectCount > 3) return;
     await delay(5000);
-    starting().catch((err) => console.error("Gagal reconnect:", err));
+    onReconnect?.().catch((err) => console.error("Gagal reconnect:", err));
   }
 
   if (connection === "open") {

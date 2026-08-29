@@ -1,11 +1,11 @@
 import fs from "fs/promises";
 import { pathToFileURL } from "url";
-import { loadPlugins } from "./loadPlugins.js";
 import path from "path";
-import logs from "../utils/logs.js";
+import { loadPlugins } from "./load.js";
+import logs from "#utils/logger.js";
 
 const registerPlugin = async (
-  dirPath = path.join(process.cwd(), "plugins"),
+  dirPath = path.join(process.cwd(), "src", "plugins"),
 ) => {
   try {
     const files = await fs.readdir(dirPath, { withFileTypes: true });
@@ -32,7 +32,7 @@ const registerPlugin = async (
 
               const names = data.names || data.name;
               if (names && data.execute) {
-                loadPlugins(names, data.execute, data);
+                loadPlugins(names, data.execute, { ...data, file: fullPath });
               }
             } catch (error) {
               console.error("Error importing file:", fullPath, error.message);

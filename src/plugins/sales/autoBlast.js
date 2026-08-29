@@ -1,18 +1,13 @@
-import path from "node:path";
-import fs from "node:fs/promises";
 import delay from "delay";
-import { buildCarouselMessage } from "../../utils/carrouselMessage.js";
-
-const dirpath = path.join(process.cwd(), "src", "storage", "autoblast.json");
+import { getCampaign } from "#storage/campaigns.js";
+import { buildCarouselMessage } from "#utils/carousel.js";
 
 const execute = async ({ m, sock }) => {
   try {
     const [id, jedaOverride] = m.text.split("|").map((v) => v.trim());
     if (!id) return m.reply("Format: .blast <campaign_id> | <jeda_ms opsional>");
 
-    const raw = await fs.readFile(dirpath, "utf-8");
-    const { campaigns } = JSON.parse(raw);
-    const campaign = campaigns[id];
+    const campaign = await getCampaign(id);
 
     if (!campaign) return m.reply(`Campaign "${id}" nggak ditemukan.`);
     if (!campaign.enabled) return m.reply(`Campaign "${id}" sedang nonaktif.`);
@@ -33,7 +28,7 @@ const execute = async ({ m, sock }) => {
         // lanjut ke grup berikutnya, jangan berhenti total kalau satu gagal
       }
     }
-    await delay(2000)
+    await delay(2000);
     m.reply(`Blast "${id}" selesai ke ${campaign.targets.length} grup.`);
   } catch (error) {
     console.error(error);
