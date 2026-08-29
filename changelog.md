@@ -3,6 +3,19 @@
 
 > Entri terbaru berada di bagian paling atas. **Dilarang mencantumkan kredensial sensitif** pada changelog ini (kode pairing, isi sesi `auth_info_baileys/`, token/API key, `.env`, dump DB, atau nilai `config.json`).
 
+## [2026-08-29] — Plugin swgc: Broadcast Reply ke Beberapa Grup
+### ✨ Fitur Baru
+- Command `swgc` (access owner): reply sebuah pesan lalu ketik `.swgc idgrup1,idgrup2,...` untuk **broadcast** pesan/media itu ke setiap grup yang didaftarkan.
+- Mendukung teks, gambar (di-kompres/resize otomatis via **sharp**), video, audio, dokumen, dan stiker — caption/mime dipertahankan.
+- Parser daftar grup (koma/whitespace), token bukan `@g.us` diabaikan, JID duplikat dilewati; kegagalan satu grup tidak menghentikan pengiriman ke grup lain.
+### 🔧 Perubahan Internal
+- Objek `m` kini punya `m.quoted` (isi + key pesan yang di-reply) untuk dipakai plugin lain.
+- Util media baru `compressImageBuffer` (sharp: resize + JPEG).
+### 📁 File Terkait
+- src/plugins/owner/swgc.js (File Baru)
+- src/connection/messageBuilder.js (`m.quoted`)
+- src/utils/media.js (`compressImageBuffer`)
+
 ## [2026-08-29] — Util Kirim Pesan: Polling, Tabel, Markdown
 ### ✨ Fitur Baru
 - Util baru `sendMessage` untuk mengirim pesan dengan lebih mudah:

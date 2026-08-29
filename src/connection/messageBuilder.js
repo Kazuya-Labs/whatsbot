@@ -1,4 +1,4 @@
-import { jidDecode } from "baileys";
+import { jidDecode, normalizeMessageContent } from "baileys";
 import {
   decodeJid,
   extractBody,
@@ -81,7 +81,25 @@ const buildMessage = async ({ upsert, sock }) => {
     ].includes(contentType),
   };
 
-  // Fungsi m.reply
+  // Fungsi m.reply — quote pesan asli
+  const contextInfo = content?.contextInfo;
+  const quotedRaw = contextInfo?.quotedMessage || null;
+
+  // Pesan yang di-reply (untuk plugin seperti repost/broadcast)
+  if (quotedRaw) {
+    m.quoted = {
+      content: normalizeMessageContent(quotedRaw),
+      key: {
+        id: contextInfo?.stanzaId,
+        remoteJid: m.chat,
+        participant: contextInfo?.participant,
+      },
+      contextInfo,
+    };
+  } else {
+    m.quoted = null;
+  }
+
   m.reply = async (contentToReply, options = {}) => {
     try {
       if (contentToReply === undefined || contentToReply === null) return;
