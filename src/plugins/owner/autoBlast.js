@@ -1,10 +1,14 @@
 import delay from "delay";
 import { getCampaign } from "#storage/campaigns.js";
 import { buildCarouselMessage } from "#utils/carousel.js";
+import { createPlugin } from "#utils/plugin.js";
+import { num, parseArgs } from "#utils/args.js";
 
-const execute = async ({ m, sock }) => {
-  try {
-    const [id, jedaOverride] = m.text.split("|").map((v) => v.trim());
+export default createPlugin({
+  names: ["blast"],
+  description: "Blast campaign ke semua target",
+  run: async ({ m, sock }) => {
+    const [id, jedaOverride] = parseArgs(m.text, "|");
     if (!id) return m.reply("Format: .blast <campaign_id> | <jeda_ms opsional>");
 
     const campaign = await getCampaign(id);
@@ -12,7 +16,7 @@ const execute = async ({ m, sock }) => {
     if (!campaign) return m.reply(`Campaign "${id}" nggak ditemukan.`);
     if (!campaign.enabled) return m.reply(`Campaign "${id}" sedang nonaktif.`);
 
-    const jeda = Number(jedaOverride) || campaign.jeda || 5000;
+    const jeda = num(jedaOverride, campaign.jeda ?? 5000);
 
     for (const jid of campaign.targets) {
       try {
@@ -22,17 +26,12 @@ const execute = async ({ m, sock }) => {
           cards: campaign.cards,
         });
         await sock.relayMessage(jid, msg.message, { messageId: msg.key.id });
-        await delay(jeda); // jeda antar grup, penting buat hindari ban
+        await delay(jeda);
       } catch (err) {
         console.error(`Gagal kirim ke ${jid}:`, err);
-        // lanjut ke grup berikutnya, jangan berhenti total kalau satu gagal
       }
     }
     await delay(2000);
     m.reply(`Blast "${id}" selesai ke ${campaign.targets.length} grup.`);
-  } catch (error) {
-    console.error(error);
-  }
-};
-
-export default { execute, names: ["blast"], isOwner: true };
+  },
+});
