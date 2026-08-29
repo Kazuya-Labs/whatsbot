@@ -4,3 +4,5 @@ auth_info_baileys/*
 .vscode/*
 agent/*
 src/storage/*.db*
+.agents/*
+AGENTS.md
