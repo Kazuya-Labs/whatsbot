@@ -163,12 +163,37 @@ Dibentuk `messageBuilder.js` untuk setiap pesan masuk: `chat`, `sender`, `fromMe
 | `config.js` | `getConfig`, `reloadConfig`, `isOwner`, `getPrefixes` (live) |
 | `plugin.js` | `createPlugin` (factory ± try/catch + error reply) |
 | `args.js` | `parseArgs(text, sep)`, `argAt`, `num(value, fallback)` |
+| `sendMessage.js` | `sendPoll`, `pollMessageFor`, `formatTable`, `sendTable`, `markdownToWhatsApp`, `sendMessage` (router string/Buffer/object) |
 | `jid.js` | `jidToUserNumber`, `phoneToJid` |
 | `media.js` | `sendMediaFromUrl(sock, jid, opts)`, `mediaMessageFor` |
 | `errors.js` | `replyError(m, error, text)` |
 | `logger.js` | logger berwarna (`logs.info/warn/error/...`) |
 | `datetime.js` | format tanggal/waktu Indonesia, `timeAgo`, `formatDuration` |
 | `general.js` / `file.js` / `buttons.js` / `carousel.js` | format Rupiah&nomor, manipulasi file/media, pesan button & carousel |
+
+## Mengirim Pesan (util `sendMessage`)
+
+```js
+import {
+  sendPoll, sendTable, sendMessage,
+  pollMessageFor, formatTable, markdownToWhatsApp,
+} from "#utils/sendMessage.js";
+
+// Polling (selectableCount: 1 = tunggal, 0 = multi, 2+ = multi maks. N)
+await sendPoll(sock, jid, { question: "Pilih?", options: ["A", "B", "C"], selectableCount: 1 });
+
+// Tabel dalam blok kode
+await sendTable(sock, jid, { headers: ["Item", "Qty"], rows: [["Pulsa", 5]], title: "*Stok*" });
+
+// Markdown -> format WhatsApp
+await sendMessage(sock, jid, "Halo **teman**!", { markdown: true });
+
+// Router: string / Buffer / object
+await sendMessage(sock, jid, { poll: pollMessageFor({ question: "Q", options: ["a", "b"] }).poll });
+await sendMessage(sock, jid, imageBuffer);
+```
+
+Semua builder (`pollMessageFor`, `formatTable`, `markdownToWhatsApp`) murni — hasilnya bisa juga dikirim lewat `m.reply(...)` di plugin.
 
 ## Panduan Kontribusi
 

@@ -3,6 +3,16 @@
 
 > Entri terbaru berada di bagian paling atas. **Dilarang mencantumkan kredensial sensitif** pada changelog ini (kode pairing, isi sesi `auth_info_baileys/`, token/API key, `.env`, dump DB, atau nilai `config.json`).
 
+## [2026-08-29] — Util Kirim Pesan: Polling, Tabel, Markdown
+### ✨ Fitur Baru
+- Util baru `sendMessage` untuk mengirim pesan dengan lebih mudah:
+  - **Polling** — `sendPoll` / builder `pollMessageFor` (2–12 pilihan, `selectableCount` dinamis: 1 = pilih tunggal, 0 = multi, 2+ = multi maksimal N).
+  - **Tabel** — `formatTable` (tabel ASCII dalam blok kode, padding otomatis) + `sendTable` (bisa dengan judul).
+  - **Markdown** — `markdownToWhatsApp` (konversi subset md → format WhatsApp: tebal/miring/strike, heading, link, bullet, blok kode aman) + flag `markdown` di router.
+  - **Router terpadu** — `sendMessage(sock, jid, content)` menerima string, Buffer (media), atau object (passthrough). Kompatibel dengan `m.reply`.
+### 📁 File Terkait
+- src/utils/sendMessage.js (File Baru)
+
 ## [2026-08-29] — Plugin Menu untuk Semua User + Filter Akses
 ### ✨ Fitur Baru
 - Command `menu` / `help` dengan akses `all` — bisa dipakai siapa saja.
