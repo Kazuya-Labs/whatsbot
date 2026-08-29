@@ -10,7 +10,7 @@ Usage:
   npm run add:plugin -- <name> [--access=<owner|admin|groups|private|all>]
 
   name    Nama plugin (alfanumerik + dash). Menjadi command word tanpa prefix.
-  access  Hak akses (default: all)
+  access  Hak akses (default: all). Plugin dibuat di src/plugins/<access>/<name>.js
             owner   = hanya owner bot
             admin   = admin grup + owner
             groups  = hanya di dalam grup
@@ -55,11 +55,13 @@ const main = () => {
     process.exit(1);
   }
 
-  const filePath = path.join(PLUGIN_DIR, `${name}.js`);
+  const filePath = path.join(PLUGIN_DIR, access, `${name}.js`);
   if (fs.existsSync(filePath)) {
     console.error(`File sudah ada: ${filePath}`);
     process.exit(1);
   }
+
+  fs.mkdirSync(path.dirname(filePath), { recursive: true });
 
   const template = `import logs from "#utils/logger.js";
 

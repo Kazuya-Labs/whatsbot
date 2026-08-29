@@ -9,20 +9,21 @@ WhatsApp bot built on Baileys (@whiskeysockets/baileys 7.0.0-rc13, pinned via np
 - Requires Node ≥18 for `node --watch`.
 
 ## CLI tools (PRD `.agents/prd.md`)
-- `npm run add:plugin -- <name> [--access=<owner|admin|groups|private|all>]` — scaffolds `src/plugins/<name>.js` (validates name/access, overwrite guard, default access `all`). With pnpm: `pnpm run add:plugin <name> --access=owner`.
+- `npm run add:plugin -- <name> [--access=<owner|admin|groups|private|all>]` — scaffolds `src/plugins/<access>/<name>.js` (validates name/access, overwrite guard, default access `all`). With pnpm: `pnpm run add:plugin <name> --access=owner`.
 - `npm run list:plugin` — prints registered commands + access role + source file (runs the real scanner, offline-safe).
 - `npm run db:generate` / `db:migrate` / `db:push` — `drizzle-kit` (schema → `drizzle/` migrations; dev-only tool).
 
 ## Structure (`src/`)
 - `connection/` — realtime event layer: `index.js` (`start()`: socket + wiring), `update.js` (connection handler), `message.js` (upsert orchestrator), `messageBuilder.js` (serializes every message → `m`, also exported as `serializeMessage`), `parse.js` (command/JID/body parsing), `group.js` (group metadata).
 - `plugin/` — plugin engine: `handler.js` (registry + `executeFn` + access checks), `load.js` (normalizes `access` from legacy keys), `register.js` (recursive scanner).
-- `plugins/` — feature commands (default export `{ execute, names, access, ... }`).
+- `plugins/` — feature commands (default export `{ execute, names, access, ... }`), dikelompokkan per access role: `owner/`, `admin/`, `groups/`, `private/`, `all/`.
 - `utils/` — shared helpers (logger, carousel, buttons, datetime, general, file).
 - `storage/` — **SQLite + Drizzle** (PRD): `schema.js`, `db.js` (opens `whatsend.db` via **`better-sqlite3`** (`drizzle-orm/better-sqlite3`) + `runMigrations()`), `campaigns.js` (repository + seed). `drizzle/` holds the drizzle-kit migration SQL (commit it). `autoblast.json` is the one-time seed (imported only when the DB is empty); runtime reads/writes go to SQLite. `whatsend.db*` is gitignored.
 - Import aliases in `package.json` `imports`: `#connection/*`, `#plugin/*`, `#plugins/*`, `#utils/*`, `#storage/*` (keep the `.js` extension, e.g. `#utils/logger.js`). Prefer aliases over relative imports.
 
 ## Plugin system (`src/plugins/`)
 - Registered automatically: `src/plugin/register.js` recursively imports every `.js` under `src/plugins/` (skips `utils/` dirs). Default export must be `{ execute, names: <string[]|string>, ... }`; `names` are command words without prefix.
+- Folders = access role: `src/plugins/<access>/`. Plugin tanpa deklarasi `access` di file otomatis diturunkan dari folder tempatnya (`load.js` → `accessFromFile`); deklarasi eksplisit tetap menang.
 - Prefixes are `!` and `.` (`getCommand` in `src/connection/parse.js`). Command and args arrive as `m.command` / `m.text`.
 - **Access roles (PRD)**: `access` key ∈ `owner | admin | groups | private | all`, enforced in `src/plugin/handler.js` (`owner`→isOwner, `admin`→admin||owner, `groups`→isGroup, `private`→!isGroup, `all`→anyone). Legacy keys still work via fallback in `load.js`: `isOwner`/`owner`→`owner`, `isAdmin`→`admin`, `isGroup`→`groups`, else `all`. Non-owners can reach public commands — gate each new command with an explicit `access` (owner-by-default plugins must set `isOwner: true` or `access: "owner"`).
 - Owner numbers are hardcoded in `src/connection/messageBuilder.js` (`ownerNumbers`).
