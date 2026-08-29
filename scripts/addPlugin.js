@@ -63,22 +63,16 @@ const main = () => {
 
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
 
-  const template = `import logs from "#utils/logger.js";
+  const template = `import { createPlugin } from "#utils/plugin.js";
 
-const execute = async ({ m, sock }) => {
-  try {
-    return m.reply(\`Command *${name}* aktif (access: ${access}).\`);
-  } catch (error) {
-    logs.error(error);
-  }
-};
-
-export default {
-  execute,
+export default createPlugin({
   names: ["${name}"],
   access: "${access}",
   description: "${name}",
-};
+  run: async ({ m, sock }) => {
+    return m.reply(\`Command *${name}* aktif (access: ${access}).\`);
+  },
+});
 `;
 
   fs.writeFileSync(filePath, template);

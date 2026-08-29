@@ -17,7 +17,7 @@ WhatsApp bot built on Baileys (@whiskeysockets/baileys 7.0.0-rc13, pinned via np
 - `connection/` — realtime event layer: `index.js` (`start()`: socket + wiring), `update.js` (connection handler), `message.js` (upsert orchestrator), `messageBuilder.js` (serializes every message → `m`, also exported as `serializeMessage`), `parse.js` (command/JID/body parsing), `group.js` (group metadata).
 - `plugin/` — plugin engine: `handler.js` (registry + `executeFn` + access checks), `load.js` (normalizes `access` from legacy keys), `register.js` (recursive scanner).
 - `plugins/` — feature commands (default export `{ execute, names, access, ... }`), dikelompokkan per access role: `owner/`, `admin/`, `groups/`, `private/`, `all/`.
-- `utils/` — shared helpers (logger, carousel, buttons, datetime, general, file).
+- `utils/` — shared helpers (`logger`, `datetime`, `general`, `file`, `buttons`, `carousel`, `args`, `jid`, `errors`, `plugin`, `media`). `createPlugin` (`#utils/plugin.js`) wraps `run` dengan try/catch + error reply — pakai di plugin baru; `replyError` tersedia via `m.replyError(error, text)`.
 - `storage/` — **SQLite + Drizzle** (PRD): `schema.js`, `db.js` (opens `whatsend.db` via **`better-sqlite3`** (`drizzle-orm/better-sqlite3`) + `runMigrations()`), `campaigns.js` (repository + seed). `drizzle/` holds the drizzle-kit migration SQL (commit it). `autoblast.json` is the one-time seed (imported only when the DB is empty); runtime reads/writes go to SQLite. `whatsend.db*` is gitignored.
 - Import aliases in `package.json` `imports`: `#connection/*`, `#plugin/*`, `#plugins/*`, `#utils/*`, `#storage/*` (keep the `.js` extension, e.g. `#utils/logger.js`). Prefer aliases over relative imports.
 

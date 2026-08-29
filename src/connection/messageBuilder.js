@@ -7,6 +7,8 @@ import {
   resolveSenderJid,
 } from "./parse.js";
 import { metadataGroup } from "./group.js";
+import { jidToUserNumber } from "#utils/jid.js";
+import { replyError } from "#utils/errors.js";
 
 // Objek Set untuk efisiensi pengecekan O(1)
 const ownerNumbers = new Set(["6285728153452", "62882005824862"]);
@@ -31,7 +33,7 @@ const buildMessage = async ({ upsert, sock }) => {
 
   // Bersihkan Device ID dari JID & ambil nomor/user ID murni
   const senderJid = decodeJid(rawSender);
-  const senderUser = jidDecode(senderJid)?.user || senderJid.split("@")[0];
+  const senderUser = jidToUserNumber(senderJid);
 
   // Ambil body teks (conversation / caption / text)
   const { body, content, contentType } = extractBody(upsert.message);
@@ -141,6 +143,9 @@ const buildMessage = async ({ upsert, sock }) => {
       console.error("[m.reply] Gagal mengeksekusi pengiriman pesan:", err);
     }
   };
+
+  // Helper reply error standar
+  m.replyError = (error, text) => replyError(m, error, text);
 
   return m;
 };

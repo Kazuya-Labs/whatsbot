@@ -1,29 +1,15 @@
-import logs from "#utils/logger.js";
+import { createPlugin } from "#utils/plugin.js";
 
-const execute = async ({ m, sock }) => {
-  try {
+export default createPlugin({
+  names: ["cekidgc", "cekid"],
+  description: "Daftar ID grup bot",
+  run: async ({ m, sock }) => {
     const groups = await sock.groupFetchAllParticipating();
-    const listId = Object.keys(groups);
-    const group = listId.map((id) => {
-      return {
-        name: groups[id].subject,
-        id: groups[id].id,
-        memberCount: groups[id].size - 1,
-      };
-    });
 
     let msg = "";
-    for (const data of group) {
-      msg += `id : ${data.id}\nname : ${data.name}\nmember : ${data.memberCount}`;
+    for (const data of Object.values(groups)) {
+      msg += `id : ${data.id}\nname : ${data.subject}\nmember : ${data.size - 1}\n`;
     }
-    m.reply(msg);
-  } catch (error) {
-    logs.error(error);
-  }
-};
-
-export default {
-  execute,
-  names: ["cekidgc", "cekid"],
-  owner: true,
-};
+    m.reply(msg || "Belum ada grup.");
+  },
+});
