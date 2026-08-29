@@ -15,6 +15,7 @@ import { messageUpsert } from "./message.js";
 import { registerPlugin } from "#plugin/register.js";
 import { initStorage } from "#storage/campaigns.js";
 import logs from "#utils/logger.js";
+import { getConfig } from "#utils/config.js";
 
 const groupCache = new NodeCache({ stdTTL: 5 * 60, useClones: false });
 const msgRetryCache = new NodeCache({ stdTTL: 60 * 60, useClones: false }); // instance terpisah
@@ -40,19 +41,26 @@ const start = async () => {
 
     const logger = P({ level: "warn" });
 
+    const sockCfg = getConfig().socket;
+
+    const browserFn = Browsers[sockCfg?.browser?.type];
+    const browser =
+      (typeof browserFn === "function" && browserFn(sockCfg.browser.name)) ||
+      Browsers.ubuntu("Chrome");
+
     /** @type {ReturnType<typeof makeWASocket>} */
     const sock = makeWASocket({
       markOnlineOnConnect: false,
       logger,
-      connectTimeoutMs: 60000,
-      browser: Browsers.ubuntu("Chrome"),
+      connectTimeoutMs: sockCfg?.connectTimeoutMs ?? 60000,
+      browser,
       cachedGroupMetadata: (jid) => groupCache.get(jid),
       auth: {
         creds: state.creds,
         keys: makeCacheableSignalKeyStore(state.keys, logger),
       },
       msgRetryCounterCache: msgRetryCache,
-      maxMsgRetryCount: 2,
+      maxMsgRetryCount: sockCfg?.maxMsgRetryCount ?? 2,
       syncFullHistory: false,
       printQRInTerminal: false,
       version,
@@ -67,11 +75,11 @@ const start = async () => {
       options: {
         timeout: 120_000,
       },
-      keepAliveIntervalMs: 30_000,
+      keepAliveIntervalMs: sockCfg?.keepAliveIntervalMs ?? 30_000,
     });
 
     if (!sock.authState.creds.registered) {
-      const nomor = await question("Masukan nomor hp : ");
+      const nomor = await question(getConfig().pairingPrompt);
       console.log("🚀 ~ starting ~ nomor:", nomor);
       await delay(3000);
       const codePairing = await sock

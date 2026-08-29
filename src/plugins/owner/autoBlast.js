@@ -3,6 +3,7 @@ import { getCampaign } from "#storage/campaigns.js";
 import { buildCarouselMessage } from "#utils/carousel.js";
 import { createPlugin } from "#utils/plugin.js";
 import { num, parseArgs } from "#utils/args.js";
+import { getConfig } from "#utils/config.js";
 
 export default createPlugin({
   names: ["blast"],
@@ -16,7 +17,7 @@ export default createPlugin({
     if (!campaign) return m.reply(`Campaign "${id}" nggak ditemukan.`);
     if (!campaign.enabled) return m.reply(`Campaign "${id}" sedang nonaktif.`);
 
-    const jeda = num(jedaOverride, campaign.jeda ?? 5000);
+    const jeda = num(jedaOverride, campaign.jeda ?? getConfig().bot?.defaultJeda ?? 5000);
 
     for (const jid of campaign.targets) {
       try {
