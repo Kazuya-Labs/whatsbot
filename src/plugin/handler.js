@@ -1,14 +1,8 @@
 import logs from "#utils/logger.js";
+import { getConfig } from "#utils/config.js";
 
 const Handler = {
   list: new Map(),
-};
-
-const message = {
-  onlyOwner: "❌ Perintah ini hanya dapat digunakan oleh Owner Bot!",
-  onlyGrup: "❌ Perintah ini hanya dapat digunakan di dalam Grup!",
-  onlyAdmin: "❌ Perintah ini hanya dapat digunakan oleh Admin Grup!",
-  onlyPrivate: "❌ Perintah ini hanya dapat digunakan di dalam chat Private!",
 };
 
 /**
@@ -21,14 +15,6 @@ const accessChecks = {
   groups: (m) => m.isGroup === true,
   private: (m) => m.isGroup !== true,
   all: () => true,
-};
-
-const accessMessages = {
-  owner: message.onlyOwner,
-  admin: message.onlyAdmin,
-  groups: message.onlyGrup,
-  private: message.onlyPrivate,
-  all: null,
 };
 
 const executeFn = async (command, opts) => {
@@ -45,7 +31,9 @@ const executeFn = async (command, opts) => {
     const check = accessChecks[access] || accessChecks.all;
 
     if (!check(m)) {
-      return m.reply?.(accessMessages[access]);
+      const denyText = getConfig().messages?.[access];
+      if (denyText) return m.reply?.(denyText);
+      return;
     }
 
     logs.debug(`execute command '${command}' (access: ${access})`);

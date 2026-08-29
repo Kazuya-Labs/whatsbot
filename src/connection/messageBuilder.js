@@ -9,9 +9,7 @@ import {
 import { metadataGroup } from "./group.js";
 import { jidToUserNumber } from "#utils/jid.js";
 import { replyError } from "#utils/errors.js";
-
-// Objek Set untuk efisiensi pengecekan O(1)
-const ownerNumbers = new Set(["6285728153452", "62882005824862"]);
+import { isOwner } from "#utils/config.js";
 
 /**
  * Susun object `m` dari pesan masuk, lengkap dengan fungsi `m.reply`.
@@ -67,7 +65,7 @@ const buildMessage = async ({ upsert, sock }) => {
     fromMe: key?.fromMe,
     contentType,
     content,
-    isOwner: ownerNumbers.has(senderUser),
+    isOwner: isOwner(senderUser),
     body,
     metadata,
     isAdmin,

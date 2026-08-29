@@ -3,6 +3,7 @@ import { buildMessage } from "./messageBuilder.js";
 import { executeFn } from "#plugin/handler.js";
 import { formatDateId } from "#utils/datetime.js";
 import logs from "#utils/logger.js";
+import { getConfig } from "#utils/config.js";
 
 const locked = new Set();
 
@@ -36,10 +37,17 @@ const messageUpsert = async (ev, sock) => {
     // Jalankan handler eksternal
     executeFn(m.command, { m, sock });
 
-    // Fitur eval (hanya owner)
-    if (m.body && m.body.startsWith(">") && m.isOwner) {
+    // Fitur eval (hanya owner, prefix dari config)
+    const evalCfg = getConfig().eval;
+    const evalPrefix = evalCfg?.prefix ?? ">";
+    if (
+      evalCfg?.enabled &&
+      m.body &&
+      m.body.startsWith(evalPrefix) &&
+      m.isOwner
+    ) {
       logs.debug("Menjalankan perintah evaluasi teks (eval)...");
-      const scriptToExecute = m.body.slice(1).trim();
+      const scriptToExecute = m.body.slice(evalPrefix.length).trim();
 
       try {
         let evaluated = eval(scriptToExecute);

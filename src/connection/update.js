@@ -1,6 +1,7 @@
 // @ts-check
 import { DisconnectReason } from "baileys";
 import delay from "delay";
+import { getConfig } from "#utils/config.js";
 
 let reconnectCount = 0;
 
@@ -12,6 +13,7 @@ let reconnectCount = 0;
  */
 const connectionUpdate = async (update, sock, onReconnect) => {
   const { connection, lastDisconnect } = update;
+  const { maxAttempts, delayMs } = getConfig().reconnect;
 
   if (connection === "close") {
     // Ambil kode alasan kenapa koneksi terputus
@@ -37,8 +39,8 @@ const connectionUpdate = async (update, sock, onReconnect) => {
     }
 
     // Panggil lagi fungsi inisialisasi utama untuk membuat koneksi baru
-    if (reconnectCount > 3) return;
-    await delay(5000);
+    if (reconnectCount > maxAttempts) return;
+    await delay(delayMs);
     onReconnect?.().catch((err) => console.error("Gagal reconnect:", err));
   }
 

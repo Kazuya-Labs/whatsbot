@@ -1,0 +1,34 @@
+{
+  "ownerNumbers": ["6285728153452", "62882005824862"],
+  "prefixes": ["!", "."],
+  "eval": {
+    "enabled": true,
+    "prefix": ">"
+  },
+  "messages": {
+    "owner": "❌ Perintah ini hanya dapat digunakan oleh Owner Bot!",
+    "admin": "❌ Perintah ini hanya dapat digunakan oleh Admin Grup!",
+    "groups": "❌ Perintah ini hanya dapat digunakan di dalam Grup!",
+    "private": "❌ Perintah ini hanya dapat digunakan di dalam chat Private!",
+    "genericError": "Terjadi kesalahan pada sistem."
+  },
+  "bot": {
+    "name": "whatsend",
+    "footer": "",
+    "defaultJeda": 5000
+  },
+  "reconnect": {
+    "maxAttempts": 3,
+    "delayMs": 5000
+  },
+  "socket": {
+    "browser": {
+      "type": "ubuntu",
+      "name": "Chrome"
+    },
+    "connectTimeoutMs": 60000,
+    "maxMsgRetryCount": 2,
+    "keepAliveIntervalMs": 30000
+  },
+  "pairingPrompt": "Masukan nomor hp : "
+}

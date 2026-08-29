@@ -1,4 +1,5 @@
 import { getContentType, jidDecode, normalizeMessageContent } from "baileys";
+import { getPrefixes } from "#utils/config.js";
 
 /**
  * @param {import('baileys').JidServer} jid
@@ -14,7 +15,7 @@ const getCommand = (text = null) => {
     return { command: null, text: null };
   }
 
-  const prefixes = ["!", "."];
+  const prefixes = getPrefixes();
 
   const firstChar = text.charAt(0);
   const hasPrefix = prefixes.includes(firstChar);

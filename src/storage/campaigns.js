@@ -4,6 +4,7 @@ import { and, count, eq, inArray } from "drizzle-orm";
 import { db, runMigrations } from "./db.js";
 import { campaigns, cards, targets } from "./schema.js";
 import logs from "#utils/logger.js";
+import { getConfig } from "#utils/config.js";
 
 /**
  * Uraikan baris `buttons` (TEXT JSON) menjadi array.
@@ -109,7 +110,7 @@ export const createCampaign = async (data) => {
         id: data.id,
         text: data.text,
         footer: data.footer ?? null,
-        jeda: data.jeda ?? 5000,
+        jeda: data.jeda ?? getConfig().bot?.defaultJeda ?? 5000,
         enabled: data.enabled ?? true,
       })
       .run();
