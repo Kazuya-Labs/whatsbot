@@ -147,6 +147,7 @@ Dibentuk `messageBuilder.js` untuk setiap pesan masuk: `chat`, `sender`, `fromMe
 
 - `m.reply(text | Buffer, { quoted?, caption?, fileName? })` — reply dengan quote default; Buffer mengirim media sesuai `mimeType`.
 - `m.replyError(error, text?)` — log error + balas pesan gagal standar.
+- `m.quoted` — pesan yang di-reply (`{ content, key, contextInfo }`) atau `null`; dipakai plugin seperti broadcast/repost.
 
 ## Penyimpanan (SQLite + Drizzle)
 
@@ -165,7 +166,7 @@ Dibentuk `messageBuilder.js` untuk setiap pesan masuk: `chat`, `sender`, `fromMe
 | `args.js` | `parseArgs(text, sep)`, `argAt`, `num(value, fallback)` |
 | `sendMessage.js` | `sendPoll`, `pollMessageFor`, `formatTable`, `sendTable`, `markdownToWhatsApp`, `sendMessage` (router string/Buffer/object) |
 | `jid.js` | `jidToUserNumber`, `phoneToJid` |
-| `media.js` | `sendMediaFromUrl(sock, jid, opts)`, `mediaMessageFor` |
+| `media.js` | `sendMediaFromUrl(sock, jid, opts)`, `mediaMessageFor`, `compressImageBuffer` (sharp) |
 | `errors.js` | `replyError(m, error, text)` |
 | `logger.js` | logger berwarna (`logs.info/warn/error/...`) |
 | `datetime.js` | format tanggal/waktu Indonesia, `timeAgo`, `formatDuration` |

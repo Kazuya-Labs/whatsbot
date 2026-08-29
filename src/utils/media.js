@@ -1,4 +1,23 @@
 import { checkMaxSize, getExtension } from "./file.js";
+import sharp from "sharp";
+
+/**
+ * Kompres/resize gambar (Buffer) via sharp, hasil JPEG. Murni (tanpa IO).
+ *
+ * @param {Buffer} buffer
+ * @param {object} [opts]
+ * @param {number} [opts.width=1080] - lebar maksimal (tanpa upscale).
+ * @param {number} [opts.quality=80] - kualitas JPEG 1..100.
+ * @returns {Promise<Buffer>}
+ */
+export const compressImageBuffer = async (
+  buffer,
+  { width = 1080, quality = 80 } = {},
+) =>
+  sharp(buffer)
+    .resize({ width, withoutEnlargement: true })
+    .jpeg({ quality })
+    .toBuffer();
 
 /** Pemetaan ekstensi file -> MIME type. */
 const EXT_TO_MIME = {
