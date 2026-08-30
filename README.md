@@ -165,12 +165,13 @@ Dibentuk `messageBuilder.js` untuk setiap pesan masuk: `chat`, `sender`, `fromMe
 | `plugin.js` | `createPlugin` (factory ± try/catch + error reply) |
 | `args.js` | `parseArgs(text, sep)`, `argAt`, `num(value, fallback)` |
 | `sendMessage.js` | `sendPoll`, `pollMessageFor`, `formatTable`, `sendTable`, `markdownToWhatsApp`, `sendMessage` (router string/Buffer/object) |
-| `jid.js` | `jidToUserNumber`, `phoneToJid` |
-| `media.js` | `sendMediaFromUrl(sock, jid, opts)`, `mediaMessageFor`, `compressImageBuffer` (sharp) |
+| `parse.js` | `getCommand`, `extractBody`, `extractTextFromContent`, `resolveSenderJid`, `decodeJid`, `isGroup` |
+| `jid.js` | `jidToUserNumber`, `phoneToJid`, `isGroupJid` |
+| `media.js` | `fetchBuffer`, `sendMediaFromUrl(sock, jid, opts)`, `mediaMessageFor`, `compressImageBuffer` (sharp) |
 | `errors.js` | `replyError(m, error, text)` |
 | `logger.js` | logger berwarna (`logs.info/warn/error/...`) |
 | `datetime.js` | format tanggal/waktu Indonesia, `timeAgo`, `formatDuration` |
-| `general.js` / `file.js` / `buttons.js` / `carousel.js` | format Rupiah&nomor, manipulasi file/media, pesan button & carousel |
+| `general.js` / `file.js` / `buttons.js` / `carousel.js` | format Rupiah&nomor, manipulasi file/media, pesan button & carousel (`nativeFlowButtonFor` dipakai bersama untuk memetakan button) |
 
 ## Mengirim Pesan (util `sendMessage`)
 

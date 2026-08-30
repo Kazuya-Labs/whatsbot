@@ -10,6 +10,7 @@ import { metadataGroup } from "./group.js";
 import { jidToUserNumber } from "#utils/jid.js";
 import { replyError } from "#utils/errors.js";
 import { isOwner } from "#utils/config.js";
+import { mediaMessageFor } from "#utils/media.js";
 
 /**
  * Susun object `m` dari pesan masuk, lengkap dengan fungsi `m.reply`.
@@ -108,30 +109,13 @@ const buildMessage = async ({ upsert, sock }) => {
 
       // A. INPUT ADALAH BUFFER
       if (Buffer.isBuffer(contentToReply)) {
-        const mime = m.mimeType || "";
-
-        if (mime.startsWith("image/")) {
-          messageOptions = {
-            image: contentToReply,
-            caption: options.caption || "",
-          };
-        } else if (mime.startsWith("video/")) {
-          messageOptions = {
-            video: contentToReply,
-            caption: options.caption || "",
-          };
-        } else if (mime.startsWith("audio/")) {
-          messageOptions = {
-            audio: contentToReply,
-            mimetype: mime,
-            ptt: options.ptt || false,
-          };
-        } else {
-          messageOptions = {
-            document: contentToReply,
-            mimetype: mime || "application/octet-stream",
-            fileName: options.fileName || "file",
-          };
+        messageOptions = mediaMessageFor(contentToReply, {
+          mimetype: m.mimeType,
+          fileName: options.fileName,
+          caption: options.caption,
+        });
+        if (m.mimeType?.startsWith("audio/")) {
+          messageOptions.ptt = options.ptt || false;
         }
       }
       // B. INPUT ADALAH STRING

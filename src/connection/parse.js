@@ -1,11 +1,12 @@
 import { getContentType, jidDecode, normalizeMessageContent } from "baileys";
 import { getPrefixes } from "#utils/config.js";
+import { isGroupJid } from "#utils/jid.js";
 
 /**
  * @param {import('baileys').JidServer} jid
  * @returns {boolean}
  */
-const isGroup = (jid) => jid.endsWith("@g.us");
+const isGroup = (jid) => isGroupJid(jid);
 
 /**
  * @param {string} text
@@ -73,6 +74,25 @@ function resolveSenderJid(key) {
 }
 
 /**
+ * Ambil teks utama dari content pesan WhatsApp sesuai contentType-nya.
+ * Murni; dipakai extractBody dan plugin yang butuh teks dari content (mis. swgc).
+ *
+ * @param {any} content - wrapper message (mis. content dari extractBody)
+ * @param {string|null} contentType
+ * @returns {string}
+ */
+export const extractTextFromContent = (content, contentType) => {
+  const textSources = {
+    conversation: () => content?.conversation,
+    extendedTextMessage: () => content?.text,
+    imageMessage: () => content?.caption,
+    videoMessage: () => content?.caption,
+    documentMessage: () => content?.caption,
+  };
+  return textSources[contentType]?.() || "";
+};
+
+/**
  * Ambil "body" text dari berbagai tipe pesan WhatsApp — termasuk pesan biasa,
  * pesan berbungkus (ephemeral/view-once), dan balasan button/list.
  *
@@ -90,16 +110,10 @@ function extractBody(rawMessage) {
   const content = contentType ? message[contentType] : null;
 
   // --- 2. Pesan teks & caption media ---
-  const textSources = {
-    conversation: () => message.conversation,
-    extendedTextMessage: () => content?.text,
-    imageMessage: () => content?.caption,
-    videoMessage: () => content?.caption,
-    documentMessage: () => content?.caption,
-  };
-
-  if (textSources[contentType]) {
-    return { contentType, content, body: textSources[contentType]() || "" };
+  if (
+    ["conversation", "extendedTextMessage", "imageMessage", "videoMessage", "documentMessage"].includes(contentType)
+  ) {
+    return { contentType, content, body: extractTextFromContent(content, contentType) };
   }
 
   // --- 3. Balasan button/list ---

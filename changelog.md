@@ -3,6 +3,18 @@
 
 > Entri terbaru berada di bagian paling atas. **Dilarang mencantumkan kredensial sensitif** pada changelog ini (kode pairing, isi sesi `auth_info_baileys/`, token/API key, `.env`, dump DB, atau nilai `config.json`).
 
+## [2026-08-30] — Refactor DRY: Satu Sumber Kebenaran untuk Logika Serupa
+### 🔧 Perubahan Internal
+- Mapper button native-flow diekstrak jadi `nativeFlowButtonFor` (dipakai `buttons.js` dan `carousel.js`; menambahkan dukungan `merchant_url` & `call`).
+- `fetchBuffer` baru di media util; `sendMediaFromUrl` memakainya, begitu juga `fetchAndCompressImage` carousel (lewat `compressImageBuffer`).
+- `m.reply` untuk input Buffer kini pakai `mediaMessageFor` (tidak ada lagi logic media yang ditulis 2×).
+- Ekstraksi teks disatukan di `extractTextFromContent` (dipakai `extractBody` dan plugin `swgc`).
+- Pengecekan JID grup disatukan di `isGroupJid` (`jid.js`; dipakai `parse.isGroup` dan `parseGroupIds` plugin `swgc`).
+- Perilaku kirim pesan tidak berubah.
+### 📁 File Terkait
+- src/utils/buttons.js, src/utils/carousel.js, src/utils/media.js, src/utils/jid.js
+- src/connection/parse.js, src/connection/messageBuilder.js, src/plugins/owner/swgc.js
+
 ## [2026-08-29] — Plugin swgc: Broadcast Reply ke Beberapa Grup
 ### ✨ Fitur Baru
 - Command `swgc` (access owner): reply sebuah pesan lalu ketik `.swgc idgrup1,idgrup2,...` untuk **broadcast** pesan/media itu ke setiap grup yang didaftarkan.
