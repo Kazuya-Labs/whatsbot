@@ -83,7 +83,7 @@ function resolveSenderJid(key) {
  */
 export const extractTextFromContent = (content, contentType) => {
   const textSources = {
-    conversation: () => content?.conversation,
+    conversation: () => (typeof content === "string" ? content : content?.conversation),
     extendedTextMessage: () => content?.text,
     imageMessage: () => content?.caption,
     videoMessage: () => content?.caption,

@@ -52,6 +52,23 @@ export const fetchBuffer = async (url) => {
 };
 
 /**
+ * Hapus pesan orang lain di chat (butuh admin/owner di grup).
+ *
+ * @param {ReturnType<typeof import('baileys').makeWASocket>} sock
+ * @param {{remoteJid: string, id?: string, participant?: string}} key - kunci pesan
+ * @returns {Promise<*>}
+ */
+export const deleteMessageFor = (sock, key) =>
+  sock.sendMessage(key.remoteJid, {
+    delete: {
+      remoteJid: key.remoteJid,
+      id: key.id,
+      participant: key.participant,
+      fromMe: false,
+    },
+  });
+
+/**
  * Susun payload pesan media WhatsApp dari Buffer + metadata mime.
  * Murni (tanpa IO) sehingga mudah diuji.
  *

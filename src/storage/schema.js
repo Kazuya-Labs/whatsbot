@@ -46,3 +46,23 @@ export const targets = sqliteTable(
   },
   (t) => [uniqueIndex("idx_targets_campaign_jid").on(t.campaignId, t.jid)],
 );
+
+/**
+ * Setting keamanan per-grup (antilink/badword). Seluruh setting disimpan
+ * sebagai satu blob JSON agar mudah diperluas tanpa migrasi.
+ *
+ * Shape JSON:
+ * {
+ *   "antilink": { "enabled": boolean, "mode": "invite"|"all", "kick": boolean },
+ *   "badword":  { "enabled": boolean, "words": string[] }
+ * }
+ */
+export const groupSettings = sqliteTable(
+  "group_settings",
+  {
+    groupJid: text("group_jid").primaryKey(),
+    settings: text("settings").notNull(),
+    updatedAt: text("updated_at").notNull().default(sql`(current_timestamp)`),
+  },
+  (t) => [index("idx_group_settings_jid").on(t.groupJid)],
+);

@@ -1,6 +1,6 @@
 import util from "util";
 import { buildMessage } from "./messageBuilder.js";
-import { executeFn } from "#plugin/handler.js";
+import { executeFn, Handler } from "#plugin/handler.js";
 import { formatDateId } from "#utils/datetime.js";
 import logs from "#utils/logger.js";
 import { getConfig } from "#utils/config.js";
@@ -33,6 +33,18 @@ const messageUpsert = async (ev, sock) => {
     logs.info(
       `from : ${m.sender}\nmessage : ${m.body} \ndate : ${formatDateId(Date.now(), "medium")}`,
     );
+
+    // Hook pesan (antilink/badword): jalan untuk pesan grup orang lain;
+    // return `true` = pesan dikonsumsi, perintah tidak diproses.
+    if (m.isGroup && !m.fromMe) {
+      for (const hook of Handler.hooks) {
+        try {
+          if ((await hook(m, sock)) === true) return;
+        } catch (hookError) {
+          console.error("[messageUpsert] hook error:", hookError);
+        }
+      }
+    }
 
     // Jalankan handler eksternal
     executeFn(m.command, { m, sock });
