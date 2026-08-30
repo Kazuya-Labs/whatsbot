@@ -1,6 +1,8 @@
 import { downloadMediaMessage, getContentType } from "baileys";
 import { mediaMessageFor, compressImageBuffer } from "#utils/media.js";
 import { createPlugin } from "#utils/plugin.js";
+import { isGroupJid } from "#utils/jid.js";
+import { extractTextFromContent } from "#connection/parse.js";
 
 /**
  * Parsing daftar ID grup dari argumen (dipisah koma/whitespace).
@@ -19,7 +21,7 @@ export const parseGroupIds = (text) => {
   const invalid = [];
 
   for (const token of tokens) {
-    if (token.endsWith("@g.us")) {
+    if (isGroupJid(token)) {
       if (!groups.includes(token)) groups.push(token);
     } else {
       invalid.push(token);
@@ -27,18 +29,6 @@ export const parseGroupIds = (text) => {
   }
 
   return { groups, invalid };
-};
-
-const extractText = (content, contentType) => {
-  if (!content) return "";
-  switch (contentType) {
-    case "conversation":
-      return content.conversation || "";
-    case "extendedTextMessage":
-      return content.text || "";
-    default:
-      return content.text || content.caption || "";
-  }
 };
 
 const isMediaType = (contentType) =>
@@ -108,7 +98,7 @@ export const swgcCore = async ({
     }
 
     if (inner) {
-      return { text: extractText(inner, contentType) };
+      return { text: extractTextFromContent(inner, contentType) };
     }
 
     return null;

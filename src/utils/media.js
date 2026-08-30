@@ -38,6 +38,20 @@ const EXT_TO_MIME = {
 };
 
 /**
+ * Unduh URL menjadi Buffer. Throw bila status != 2xx.
+ *
+ * @param {string} url
+ * @returns {Promise<Buffer>}
+ */
+export const fetchBuffer = async (url) => {
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`Gagal fetch ${url}: ${response.status} ${response.statusText}`);
+  }
+  return Buffer.from(await response.arrayBuffer());
+};
+
+/**
  * Susun payload pesan media WhatsApp dari Buffer + metadata mime.
  * Murni (tanpa IO) sehingga mudah diuji.
  *
@@ -71,12 +85,7 @@ export const mediaMessageFor = (buffer, { mimetype, fileName, caption } = {}) =>
  * @param {number} [opts.maxMb] - batas ukuran (dalam MB); throw bila melebihi.
  */
 export const sendMediaFromUrl = async (sock, jid, { url, caption, mimetype, fileName, maxMb }) => {
-  const response = await fetch(url);
-  if (!response.ok) {
-    throw new Error(`Gagal fetch media: ${response.status} ${response.statusText}`);
-  }
-
-  const buffer = Buffer.from(await response.arrayBuffer());
+  const buffer = await fetchBuffer(url);
   if (maxMb && !checkMaxSize(buffer, maxMb)) {
     throw new Error(`Ukuran media melebihi ${maxMb} MB.`);
   }
