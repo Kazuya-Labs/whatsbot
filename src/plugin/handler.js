@@ -3,6 +3,7 @@ import { getConfig } from "#utils/config.js";
 
 const Handler = {
   list: new Map(),
+  hooks: [],
 };
 
 /**

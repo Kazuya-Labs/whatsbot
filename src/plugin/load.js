@@ -46,6 +46,10 @@ const loadPlugins = (names, execute, opts = {}) => {
 
     const pluginData = { execute, options };
 
+    if (typeof opts.onMessage === "function") {
+      Handler.hooks.push(opts.onMessage);
+    }
+
     if (Array.isArray(names)) {
       const len = names.length;
       for (let i = 0; i < len; i++) {

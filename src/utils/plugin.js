@@ -11,7 +11,7 @@ import { replyError } from "./errors.js";
  * @param {string} [cfg.description]
  * @returns {{execute: Function, names: string|string[], access?: string, description?: string}}
  */
-export const createPlugin = ({ names, run, access, description }) => {
+export const createPlugin = ({ names, run, access, description, onMessage }) => {
   const execute = async (opts) => {
     const { m } = opts;
     try {
@@ -26,6 +26,7 @@ export const createPlugin = ({ names, run, access, description }) => {
   return {
     execute,
     names,
+    ...(onMessage ? { onMessage } : {}),
     ...(access ? { access } : {}),
     ...(description ? { description } : {}),
   };

@@ -74,20 +74,23 @@ whatsbot/
 │   │   ├── message.js        #   orchestrator pesan masuk
 │   │   ├── messageBuilder.js #   serialize pesan -> objek `m` (+ m.reply)
 │   │   ├── parse.js          #   parse command / JID / body
-│   │   └── group.js          #   helper metadata grup
+│   │   ├── group.js          #   helper metadata grup
+│   │   └── cache.js          #   groupCache (TTL) + msgRetryCache (NodeCache)
 │   ├── plugin/               # mesin plugin
-│   │   ├── handler.js        #   registry + akses check
+│   │   ├── handler.js        #   registry + akses check + hook registry
 │   │   ├── load.js           #   normalisasi access (+ infer dari folder)
 │   │   └── register.js       #   scanner rekursif
 │   ├── plugins/              # command (folder = access role)
 │   │   ├── owner/            #   admin/ groups/ private/ all/
+│   │   │   └── admin/        #   plugin keamanan grup (pp, desc, antilink, dst)
 │   ├── storage/              # SQLite + Drizzle
 │   │   ├── schema.js         #   skema tabel
 │   │   ├── db.js             #   koneksi better-sqlite3 + runMigrations()
 │   │   ├── campaigns.js      #   repository + seed
+│   │   ├── settings.js       #   repository group_settings (per-grup)
 │   │   └── autoblast.json    #   seed satu kali (jangan tulis manual)
 │   └── utils/                # helper: config, plugin, args, jid, media,
-│                             #         errors, logger, datetime, general, file
+│                             #         string, errors, logger, datetime, ...
 └── scripts/                  # CLI: addPlugin.js, listPlugins.js
 ```
 
@@ -128,6 +131,25 @@ export default createPlugin({
 - `createPlugin` membungkus `run` dengan try/catch + log + reply error otomatis.
 - `access` bisa dilewatkan: kalau file ditaruh di `src/plugins/owner/`, otomatis jadi `owner` (infer dari folder).
 - Command di-scroll oleh `src/plugin/register.js` (rekursif, melewati folder `utils`).
+- Ditambah `onMessage: async (m, sock) => boolean` (opsional) untuk plugin yang **menyadap pesan sebelum command diproses** (mis. `antilink`/`badword`). Didaftarkan otomatis di `Handler.hooks` dan dijalankan di `message.js` untuk pesan grup non-self; return `true` berarti pesan dikonsumsi (command tidak diproses).
+
+### Plugin Admin (keamanan grup)
+
+Dipanggil oleh admin/owner di dalam grup (`access: "admin"`), dengan pengaturan per-grup tersimpan di tabel `group_settings` (lihat Repo `#storage/settings.js`):
+
+| command (alias) | fungsi |
+|---|---|
+| `pp` / `setpp` / `setppgroup` | set foto grup (reply gambar) / `.pp del` hapus |
+| `desc` / `setdesc` / `setinfo` | ubah deskripsi grup |
+| `sub` / `setjudul` / `setnama` / `setgcnama` | ubah judul/nama grup |
+| `setgc` / `set` | hub pengaturan: `announce on/off`, `lock on/off`, `open`/`close`, `approval on/off` |
+| `antilink` / `al` | anti-link: `on/off`, `mode invite\|all`, `kick on/off`, `status` |
+| `badword` / `bw` | kata terlarang: `add`, `del`, `list`, `on/off` |
+| `kick` / `tendang` / `out` | keluarkan member (reply / mention / nomor) |
+| `promote` / `naikadmin` / `ngadm` | jadikan admin |
+| `demote` / `turunkan` / `ngadm2` | turunkan admin |
+
+`antilink` dan `badword` memakai hook `onMessage`: `antilink mode invite` hanya memblokir tautan undangan (`chat.whatsapp.com`/`wa.me`) dan `mode all` memblokir semua `http(s)`; `badword` menghapus pesan berisi kata terlarang + membalas dengan mention pelanggar. Keduanya abaikan admin/owner dan berjalan bila `enabled`. Target member di-resolve lewat `src/plugins/admin/utils/targets.js` (`resolveTargetJids`) dengan prioritas reply → mention → nomor yang diketik.
 
 ### Access role
 
@@ -152,9 +174,10 @@ Dibentuk `messageBuilder.js` untuk setiap pesan masuk: `chat`, `sender`, `fromMe
 ## Penyimpanan (SQLite + Drizzle)
 
 - DB: `src/storage/whatsend.db` (gitignored). Driver `better-sqlite3` (sinkron).
-- Schema: `campaigns`, `campaign_cards`, `campaign_targets` (lihat `schema.js`).
+- Schema: `campaigns`, `campaign_cards`, `campaign_targets`, `group_settings` (lihat `schema.js`).
 - Migrasi: `npm run db:generate` → SQL di `drizzle/` (commit). Bot menerapkan otomatis saat boot (`runMigrations()`), idempotent via tabel `__drizzle_migrations`.
 - Repo: `src/storage/campaigns.js` (`getCampaign`, `listCampaigns`, `createCampaign`, `addTarget`, `removeTarget`, `seedFromJsonIfEmpty`, `initStorage`). **Jangan** baca/tulis `autoblast.json` langsung — itu seed sekali jalan.
+- `group_settings` (repo `src/storage/settings.js`): 1 baris per grup (`group_jid` PK, `settings` JSON, `updated_at`). JSON: `{ antilink: { enabled, mode: "invite"|"all", kick }, badword: { enabled, words: [] } }`. `getSettings` menggabungkan default + tersimpan; `updateSettings` merge per kunci top-level (upsert).
 - ⚠️ `createCampaign` memakai `db.transaction` dengan body **sinkron** (`.run()` per insert). Jangan `await` di dalam callback transaksi.
 
 ## Utilities (`src/utils/`)
@@ -167,7 +190,8 @@ Dibentuk `messageBuilder.js` untuk setiap pesan masuk: `chat`, `sender`, `fromMe
 | `sendMessage.js` | `sendPoll`, `pollMessageFor`, `formatTable`, `sendTable`, `markdownToWhatsApp`, `sendMessage` (router string/Buffer/object) |
 | `parse.js` | `getCommand`, `extractBody`, `extractTextFromContent`, `resolveSenderJid`, `decodeJid`, `isGroup` |
 | `jid.js` | `jidToUserNumber`, `phoneToJid`, `isGroupJid` |
-| `media.js` | `fetchBuffer`, `sendMediaFromUrl(sock, jid, opts)`, `mediaMessageFor`, `compressImageBuffer` (sharp) |
+| `media.js` | `fetchBuffer`, `sendMediaFromUrl(sock, jid, opts)`, `mediaMessageFor`, `compressImageBuffer` (sharp), `deleteMessageFor(sock, key)` |
+| `string.js` | `extractLinks(text, mode)` (mode `invite`/`all`), `hasBadWord(text, words)`, `escapeRegExp` |
 | `errors.js` | `replyError(m, error, text)` |
 | `logger.js` | logger berwarna (`logs.info/warn/error/...`) |
 | `datetime.js` | format tanggal/waktu Indonesia, `timeAgo`, `formatDuration` |
