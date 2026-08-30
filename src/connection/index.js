@@ -9,16 +9,13 @@ import delay from "delay";
 import readline from "readline";
 import path from "path";
 import P from "pino";
-import NodeCache from "node-cache";
+import { groupCache, msgRetryCache } from "./cache.js";
 import { connectionUpdate } from "./update.js";
 import { messageUpsert } from "./message.js";
 import { registerPlugin } from "#plugin/register.js";
 import { initStorage } from "#storage/campaigns.js";
 import logs from "#utils/logger.js";
 import { getConfig } from "#utils/config.js";
-
-const groupCache = new NodeCache({ stdTTL: 5 * 60, useClones: false });
-const msgRetryCache = new NodeCache({ stdTTL: 60 * 60, useClones: false }); // instance terpisah
 
 const question = (text) => {
   const rl = readline.createInterface({
@@ -103,6 +100,9 @@ const start = async () => {
     sock.ev.on("connection.update", (update) => {
       connectionUpdate(update, sock, start);
     });
+    const invalidateAllGroups = () => groupCache.del("all");
+    sock.ev.on("groups.update", invalidateAllGroups);
+    sock.ev.on("group-participants.update", invalidateAllGroups);
   } catch (error) {
     logs.error(error);
   }
