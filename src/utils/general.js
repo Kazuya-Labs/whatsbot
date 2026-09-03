@@ -1,8 +1,4 @@
-/**
- * 1. Memformat angka menjadi format mata uang Rupiah (IDR).
- * @param {number} amount - Angka yang akan diformat.
- * @returns {string} Teks terformat (Contoh: "Rp 150.000").
- */
+/** Format angka mata uang Rupiah (IDR). @param {number} amount @returns {string} */
 export const formatRupiah = (amount) => {
   return new Intl.NumberFormat('id-ID', {
     style: 'currency',
@@ -12,33 +8,24 @@ export const formatRupiah = (amount) => {
 };
 
 /**
- * 2. Memformat nomor telepon internasional/lokal menjadi standar bersih (hanya angka).
- * Mengubah awalan "08" atau "+62" menjadi format standar tertentu (default: "628").
- * @param {string} phone - Nomor telepon mentah.
- * @returns {string} Nomor telepon bersih tanpa spasi/simbol.
+ * Normalisasi nomor telepon: buang non-digit, "08x" jadi "628x".
+ * @param {string} phone
+ * @returns {string}
  */
 export const sanitizePhoneNumber = (phone) => {
-  let cleaned = phone.replace(/\D/g, ''); // Hapus semua karakter non-angka
+  let cleaned = phone.replace(/\D/g, '');
   if (cleaned.startsWith('0')) {
     cleaned = '62' + cleaned.slice(1);
   }
   return cleaned;
 };
 
-/**
- * 3. Mengubah objek menjadi string query URL (Serialization).
- * @param {Object} obj - Objek key-value.
- * @returns {string} String query URL (Contoh: "page=1&limit=10").
- */
+/** @param {Object} obj @returns {string} query string URL */
 export const serializeQuery = (obj) => {
   return new URLSearchParams(obj).toString();
 };
 
-/**
- * 4. Membuat string acak (Random String) untuk kebutuhan token, password acak, atau ID unik.
- * @param {number} [length=16] - Panjang karakter yang diinginkan.
- * @returns {string} String acak alfanumerik.
- */
+/** String acak alfanumerik. @param {number} [length=16] @returns {string} */
 export const generateRandomString = (length = 16) => {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
   let result = '';
@@ -49,47 +36,34 @@ export const generateRandomString = (length = 16) => {
 };
 
 /**
- * 5. Memotong teks yang terlalu panjang dan menambahkan tanda akhiran (Truncate).
- * @param {string} text - Teks asli.
- * @param {number} maxLength - Batas maksimal karakter.
- * @param {string} [suffix='...'] - Tanda akhiran potong.
- * @returns {string} Teks yang sudah dipotong.
+ * Potong teks panjang + suffix.
+ * @param {string} text
+ * @param {number} maxLength
+ * @param {string} [suffix='...']
+ * @returns {string}
  */
 export const truncateText = (text, maxLength, suffix = '...') => {
   if (!text || text.length <= maxLength) return text;
   return text.substring(0, maxLength).trim() + suffix;
 };
 
-/**
- * 6. Mengubah string menjadi format Slug (Cocok untuk URL SEO friendly).
- * @param {string} text - Teks asli (Contoh: "Belajar Node.js untuk Pemula!").
- * @returns {string} String berbentuk slug (Contoh: "belajar-node-js-untuk-pemula").
- */
+/** Slug URL SEO friendly. @param {string} text @returns {string} */
 export const slugify = (text) => {
   return text
     .toString()
     .toLowerCase()
     .trim()
-    .replace(/\s+/g, '-')           // Ganti spasi dengan -
-    .replace(/[^\w\-]+/g, '')       // Hapus semua karakter non-word
-    .replace(/\-\-+/g, '-');        // Ganti gundukan tanda - menjadi satu
+    .replace(/\s+/g, '-')
+    .replace(/[^\w\-]+/g, '')
+    .replace(/\-\-+/g, '-');
 };
 
-/**
- * 7. Mengecek apakah sebuah objek kosong (Empty Object {}).
- * @param {Object} obj - Objek yang ingin dicek.
- * @returns {boolean} True jika kosong, False jika memiliki properti.
- */
+/** @param {Object} obj @returns {boolean} true jika objek kosong */
 export const isEmptyObject = (obj) => {
   return obj && Object.keys(obj).length === 0 && obj.constructor === Object;
 };
 
-/**
- * 8. Menyaring (filter) objek hanya untuk mengambil properti yang diinginkan saja (Pick Object).
- * @param {Object} obj - Objek sumber.
- * @param {string[]} keys - Daftar key yang ingin diambil.
- * @returns {Object} Objek baru berisi key yang dipilih saja.
- */
+/** Ambil subset properti objek. @param {Object} obj @param {string[]} keys @returns {Object} */
 export const pickFields = (obj, keys) => {
   const newObj = {};
   keys.forEach((key) => {
@@ -98,13 +72,7 @@ export const pickFields = (obj, keys) => {
   return newObj;
 };
 
-/**
- * 9. Fungsi Debounce untuk membatasi eksekusi fungsi yang dipanggil berulang kali dalam waktu singkat.
- * Sangat berguna untuk mengoptimalkan performa pencarian (search input) atau resize window.
- * @param {Function} func - Fungsi yang akan dieksekusi.
- * @param {number} delay - Waktu tunggu dalam milidetik.
- * @returns {Function} Fungsi bernaung debounce.
- */
+/** Batasi eksekusi fungsi yang dipanggil berulang dalam waktu singkat. @param {Function} func @param {number} delay @returns {Function} */
 export const debounce = (func, delay) => {
   let timeoutId;
   return (...args) => {
@@ -113,21 +81,14 @@ export const debounce = (func, delay) => {
   };
 };
 
-/**
- * 10. Menyembunyikan sebagian karakter sensitif (Masking), seperti email atau nomor kartu kredit.
- * @param {string} str - Teks sensitif.
- * @param {number} [visibleCount=4] - Jumlah karakter di awal/akhir yang tetap terlihat.
- * @returns {string} Teks ter-masking (Contoh: "user****@gmail.com" atau "4321************").
- */
+/** Sembunyikan sebagian karakter sensitif. @param {string} str @param {number} [visibleCount=4] @returns {string} */
 export const maskSensitiveData = (str, visibleCount = 4) => {
   if (!str) return '';
   if (str.includes('@')) {
-    // Masking tipe Email
     const [name, domain] = str.split('@');
     if (name.length <= 2) return `${name[0]}***@${domain}`;
     return `${name.substring(0, visibleCount)}***@${domain}`;
   } else {
-    // Masking tipe String Biasa / Nomor Kartu / Telepon
     if (str.length <= visibleCount) return '***';
     return str.substring(0, visibleCount) + '*'.repeat(str.length - visibleCount);
   }

@@ -1,9 +1,8 @@
 /**
- * Memformat objek Date atau String ISO menjadi format tanggal lokal Indonesia (WIB/WITA/WIT).
- *
- * @param {Date|string|number} date - Objek Date, string tanggal, atau timestamp.
- * @param {'short'|'medium'|'long'|'full'} [style='long'] - Gaya tampilan tanggal.
- * @returns {string} Tanggal terformat (Contoh: "14 Juli 2026").
+ * Format tanggal lokal Indonesia.
+ * @param {Date|string|number} date
+ * @param {'short'|'medium'|'long'|'full'} [style='long']
+ * @returns {string}
  */
 export const formatDateId = (date, style = "long") => {
   const d = new Date(date);
@@ -19,13 +18,7 @@ export const formatDateId = (date, style = "long") => {
   return new Intl.DateTimeFormat("id-ID", options[style]).format(d);
 };
 
-/**
- * Memformat waktu menjadi format jam lokal 24 Jam (Contoh: "14:05 WIB").
- *
- * @param {Date|string|number} date - Objek Date, string tanggal, atau timestamp.
- * @param {boolean} [includeZone=true] - Menyertakan zona waktu (WIB/WITA/WIT).
- * @returns {string} Waktu terformat (Contoh: "14:05 WIB").
- */
+/** Format waktu lokal 24 jam. @param {Date|string|number} date @param {boolean} [includeZone=true] @returns {string} */
 export const formatTimeId = (date, includeZone = true) => {
   const d = new Date(date);
   if (isNaN(d.getTime())) throw new TypeError("Tanggal tidak valid");
@@ -40,13 +33,7 @@ export const formatTimeId = (date, includeZone = true) => {
   return new Intl.DateTimeFormat("id-ID", options).format(d);
 };
 
-/**
- * Mengubah durasi milidetik menjadi format string jam, menit, detik yang mudah dibaca.
- * Cocok untuk durasi video, proses pemrosesan file, atau waktu tunggu.
- *
- * @param {number} ms - Durasi dalam milidetik.
- * @returns {string} String durasi terformat (Contoh: "2 jam 15 menit 30 detik").
- */
+/** Durasi milidetik -> "2 jam 15 menit 30 detik". @param {number} ms @returns {string} */
 export const formatDuration = (ms) => {
   if (typeof ms !== "number" || ms < 0)
     throw new TypeError("Input harus berupa angka positif");
@@ -66,11 +53,10 @@ export const formatDuration = (ms) => {
 };
 
 /**
- * Menghitung selisih waktu dalam bentuk kalimat relatif (Contoh: "3 jam yang lalu", "2 hari yang akan datang").
- *
- * @param {Date|string|number} targetDate - Tanggal tujuan yang ingin dibandingkan.
- * @param {Date|string|number} [baseDate=new Date()] - Tanggal dasar pembanding (default: saat ini).
- * @returns {string} Kalimat waktu relatif dalam bahasa Indonesia.
+ * Selisih waktu relatif ("3 jam yang lalu").
+ * @param {Date|string|number} targetDate
+ * @param {Date|string|number} [baseDate=new Date()]
+ * @returns {string}
  */
 export const timeAgo = (targetDate, baseDate = new Date()) => {
   const target = new Date(targetDate);
@@ -105,12 +91,11 @@ export const timeAgo = (targetDate, baseDate = new Date()) => {
 };
 
 /**
- * Menambahkan atau mengurangi waktu dari tanggal tertentu.
- *
- * @param {Date|string|number} date - Tanggal dasar.
- * @param {number} amount - Jumlah perubahan (bisa bernilai negatif untuk mengurangi).
- * @param {'days'|'hours'|'minutes'|'seconds'} unit - Satuan waktu yang diubah.
- * @returns {Date} Objek Date baru hasil kalkulasi.
+ * Tambah/kurang waktu dari tanggal.
+ * @param {Date|string|number} date
+ * @param {number} amount
+ * @param {'days'|'hours'|'minutes'|'seconds'} unit
+ * @returns {Date}
  */
 export const addTimeToDate = (date, amount, unit) => {
   const d = new Date(date);

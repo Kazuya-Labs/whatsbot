@@ -9,9 +9,7 @@ const STATUS_JID = "status@broadcast";
 const ALL_GROUPS_KEY = "all";
 
 /**
- * Parsing daftar ID grup dari argumen (dipisah koma/whitespace).
- * Murni sehingga mudah diuji.
- *
+ * Parsing daftar ID grup dari argumen (koma/whitespace).
  * @param {string} [text]
  * @returns {{ groups: string[], invalid: string[] }}
  */
@@ -36,10 +34,9 @@ export const parseGroupIds = (text) => {
 };
 
 /**
- * Daftar semua grup tempat bot bergabung, di-cache di `groupCache`
- * (key "all", TTL standar 5 menit) supaya `groupFetchAllParticipating`
- * tidak dipanggil berulang (hindari over-limit). Di-invalidasi otomatis
- * pada event groups.update / group-participants.update.
+ * Daftar semua grup bot, di-cache di `groupCache` (key "all", TTL 5 menit)
+ * agar `groupFetchAllParticipating` tak dipanggil berulang (hindari over-limit).
+ * Di-invalidasi otomatis pada groups.update / group-participants.update.
  *
  * @param {ReturnType<typeof import('baileys').makeWASocket>} sock
  * @returns {Promise<string[]>}
@@ -62,7 +59,7 @@ const isRejectedType = (contentType) =>
 
 /**
  * Susun konten status dari pesan yang di-reply.
- * Download & kompres media cukup sekali (efisien, 1 upload).
+ * Download & kompres media sekali (1 upload).
  *
  * @param {object} quoted - `m.quoted`.
  * @param {Function} downloader - downloader media (default baileys).
@@ -124,7 +121,7 @@ export const buildStatusContent = async (
 
 /**
  * Inti swgc: upload status SEKALI ke status@broadcast, menandai `groups`
- * lewat `statusJidList` (grup-grup tersebut melihat/tag di status).
+ * lewat `statusJidList`.
  *
  * @param {object} params
  * @param {ReturnType<typeof import('baileys').makeWASocket>} params.sock

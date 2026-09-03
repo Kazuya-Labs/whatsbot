@@ -107,7 +107,6 @@ const buildMessage = async ({ upsert, sock }) => {
 
       let messageOptions = {};
 
-      // A. INPUT ADALAH BUFFER
       if (Buffer.isBuffer(contentToReply)) {
         messageOptions = mediaMessageFor(contentToReply, {
           mimetype: m.mimeType,
@@ -117,13 +116,9 @@ const buildMessage = async ({ upsert, sock }) => {
         if (m.mimeType?.startsWith("audio/")) {
           messageOptions.ptt = options.ptt || false;
         }
-      }
-      // B. INPUT ADALAH STRING
-      else if (typeof contentToReply === "string") {
+      } else if (typeof contentToReply === "string") {
         messageOptions = { text: contentToReply };
-      }
-      // C. INPUT ADALAH OBJEK
-      else if (typeof contentToReply === "object") {
+      } else if (typeof contentToReply === "object") {
         messageOptions = { ...contentToReply };
       }
 

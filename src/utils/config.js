@@ -62,6 +62,9 @@ const DEFAULT_CONFIG = {
     keepAliveIntervalMs: 30000,
   },
   pairingPrompt: "Masukan nomor hp : ",
+  pairingMethod: "ask",
+  pairingMethodPrompt:
+    "Pilih cara pairing pertama kali:\n[1] QR Code\n[2] Pairing Code\n> ",
 };
 
 /**

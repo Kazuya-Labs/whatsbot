@@ -22,12 +22,11 @@ async function buildCarouselCard(
     nativeFlowButtonFor({ ...btn, url: btn.url || btn.value, merchant_url: btn.value }),
   );
 
-  // --- Fetch + compress gambar dulu, baru upload ---
   let imageMessageContent;
   if (imageUrl) {
     const compressedBuffer = await fetchAndCompressImage(imageUrl);
     const media = await prepareWAMessageMedia(
-      { image: compressedBuffer }, // langsung kasih Buffer, bukan { url: imageUrl }
+      { image: compressedBuffer }, // beri Buffer langsung, bukan { url }
       messageGenOptions,
     );
     imageMessageContent = media.imageMessage;
@@ -50,7 +49,6 @@ async function buildCarouselCard(
   });
 }
 
-// buildCarouselMessage tetap sama, ga perlu diubah
 /**
  * Bikin pesan carousel (kartu geser horizontal), tiap kartu punya button + gambar sendiri.
  *
@@ -62,12 +60,11 @@ async function buildCarouselCard(
  * @param {Array<object>} opts.cards
  */
 async function buildCarouselMessage(sock, jid, { text, footer, cards }) {
-  // options resmi yang dibutuhkan prepareWAMessageMedia buat upload media
   const messageGenOptions = {
     upload: sock.waUploadToServer,
   };
 
-  // Upload semua gambar kartu secara paralel biar lebih cepat
+  // upload semua gambar kartu secara paralel
   const cardMessages = await Promise.all(
     cards.map((card) => buildCarouselCard(card, messageGenOptions)),
   );

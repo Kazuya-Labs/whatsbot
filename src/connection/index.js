@@ -7,6 +7,7 @@ import {
 } from "baileys";
 import delay from "delay";
 import readline from "readline";
+import qrcode from "qrcode-terminal";
 import path from "path";
 import P from "pino";
 import { groupCache, msgRetryCache } from "./cache.js";
@@ -28,6 +29,60 @@ const question = (text) => {
       resolve(answer);
     }),
   );
+};
+
+// Memo pilihan metode pairing + status inisialisasi, agar prompt menu & nomor
+// tidak berulang tiap QR re-emit (Baileys mengirim QR baru tiap ~20 detik).
+let pairingMethodChoice = null;
+let pairingInitiated = false;
+
+/**
+ * Tentukan metode pairing: konfigurasi (`pairingMethod`) atau pilihan interaktif.
+ * @returns {"qr"|"pairing"}
+ */
+const resolvePairingMethod = async () => {
+  if (pairingMethodChoice) return pairingMethodChoice;
+  const configured = getConfig().pairingMethod;
+  if (configured === "qr" || configured === "pairing") return configured;
+
+  // "ask" (default) -> minta user memilih sekali per proses
+  const answer = (await question(getConfig().pairingMethodPrompt)).trim();
+  pairingMethodChoice = answer === "2" ? "pairing" : "qr";
+  return pairingMethodChoice;
+};
+
+/**
+ * Tangani QR code: cetak sebagai QR di terminal lalu tunggu di-scan.
+ * @param {string} qr
+ */
+const handleQr = (qr) => {
+  console.log(
+    "\n📱 Scan QR di bawah dengan WhatsApp > Setelan > Perangkat Tertaut > Tautkan Perangkat:",
+  );
+  qrcode.generate(qr, { small: true });
+  console.log("");
+};
+
+/**
+ * Tangani pairing code: minta nomor lalu tampilkan kode (6 digit dengan tanda "-").
+ * @param {ReturnType<typeof makeWASocket>} sock
+ */
+const handlePairing = async (sock) => {
+  if (pairingInitiated) return;
+  pairingInitiated = true;
+
+  const nomor = await question(getConfig().pairingPrompt);
+  console.log("🚀 ~ starting ~ nomor:", nomor);
+  await delay(3000);
+  const codePairing = await sock
+    .requestPairingCode(nomor.trim())
+    .catch((err) => {
+      logs.error("Gagal pairing code:", err);
+      return null;
+    });
+  if (codePairing) {
+    logs.info("code pairing ", codePairing.slice(0, 4) + "-" + codePairing.slice(4));
+  }
 };
 
 const start = async () => {
@@ -85,27 +140,18 @@ const start = async () => {
       const { qr } = update;
 
       if (qr && !sock.authState.creds.registered) {
-        const nomor = await question(getConfig().pairingPrompt);
-        console.log("🚀 ~ starting ~ nomor:", nomor);
-        await delay(3000);
-        const codePairing = await sock
-          .requestPairingCode(nomor.trim())
-          .catch((err) => {
-            logs.error("Gagal pairing code:", err);
-            return null;
-          });
-        if (codePairing) {
-          logs.info(
-            "code pairing ",
-            codePairing.slice(0, 4) + "-" + codePairing.slice(4),
-          );
+        const method = await resolvePairingMethod();
+        if (method === "qr") {
+          handleQr(qr);
+        } else {
+          await handlePairing(sock);
         }
       }
 
       connectionUpdate(update, sock, start);
     });
-    // Invalidasi cache metadata grup (per-jid) + daftar "all" saat grup berubah,
-    // supaya status admin (`isAdmin`) tetap akurat tanpa fetch berlebih.
+    // Invalidasi cache metadata grup (per-jid + daftar "all") agar status
+    // admin (`isAdmin`) tetap akurat tanpa fetch berlebih.
     const invalidateGroup = (jid) => {
       groupCache.del(jid);
       groupCache.del("all");

@@ -49,9 +49,8 @@ const decodeJid = (jid) => {
 };
 
 /**
- * Memastikan sender selalu dalam format @s.whatsapp.net (bukan @lid).
- * Baileys bisa mengirim remoteJid/remoteJidAlt dalam mode LID tergantung
- * addressingMode, jadi kita cek dua-duanya dan ambil yang berakhiran .net.
+ * Memastikan sender berformat @s.whatsapp.net (bukan @lid). Cek remoteJid &
+ * participant (alt) karena Baileys bisa memakai LID tergantung addressingMode.
  *
  * @param {import('baileys').proto.IMessageKey} key
  * @returns {string|null}
@@ -70,12 +69,11 @@ function resolveSenderJid(key) {
     }
   }
 
-  return null; // tidak ada kandidat yang valid (semua @lid atau kosong)
+  return null; // semua kandidat @lid atau kosong
 }
 
 /**
- * Ambil teks utama dari content pesan WhatsApp sesuai contentType-nya.
- * Murni; dipakai extractBody dan plugin yang butuh teks dari content (mis. swgc).
+ * Ambil teks utama dari content sesuai contentType-nya.
  *
  * @param {any} content - wrapper message (mis. content dari extractBody)
  * @param {string|null} contentType
@@ -93,14 +91,14 @@ export const extractTextFromContent = (content, contentType) => {
 };
 
 /**
- * Ambil "body" text dari berbagai tipe pesan WhatsApp — termasuk pesan biasa,
- * pesan berbungkus (ephemeral/view-once), dan balasan button/list.
+ * Ambil "body" text dari berbagai tipe pesan — biasa, berbungkus
+ * (ephemeral/view-once), dan balasan button/list.
  *
  * @param {any} rawMessage - object `message` mentah dari upsert (message?.message)
  * @returns {{ contentType: string|null, content: any, body: string }}
  */
 function extractBody(rawMessage) {
-  // --- 1. Buka bungkus ephemeral/view-once dulu ---
+  // buka bungkus ephemeral/view-once
   const message = normalizeMessageContent(rawMessage);
   if (!message) {
     return { contentType: null, content: null, body: "" };
@@ -109,14 +107,14 @@ function extractBody(rawMessage) {
   const contentType = getContentType(message) || null;
   const content = contentType ? message[contentType] : null;
 
-  // --- 2. Pesan teks & caption media ---
+  // teks & caption media
   if (
     ["conversation", "extendedTextMessage", "imageMessage", "videoMessage", "documentMessage"].includes(contentType)
   ) {
     return { contentType, content, body: extractTextFromContent(content, contentType) };
   }
 
-  // --- 3. Balasan button/list ---
+  // balasan button/list
   switch (contentType) {
     case "buttonsResponseMessage":
       return {
@@ -155,7 +153,7 @@ function extractBody(rawMessage) {
     }
 
     default:
-      // Tipe lain (reactionMessage, protocolMessage, dst) tidak punya teks
+      // reaction/protocol/tipe lain tidak punya teks
       return { contentType, content, body: "" };
   }
 }
