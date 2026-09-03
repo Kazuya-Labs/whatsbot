@@ -2,12 +2,11 @@ import { checkMaxSize, getExtension } from "./file.js";
 import sharp from "sharp";
 
 /**
- * Kompres/resize gambar (Buffer) via sharp, hasil JPEG. Murni (tanpa IO).
- *
+ * Kompres/resize gambar (Buffer) via sharp -> JPEG.
  * @param {Buffer} buffer
  * @param {object} [opts]
- * @param {number} [opts.width=1080] - lebar maksimal (tanpa upscale).
- * @param {number} [opts.quality=80] - kualitas JPEG 1..100.
+ * @param {number} [opts.width=1080]
+ * @param {number} [opts.quality=80]
  * @returns {Promise<Buffer>}
  */
 export const compressImageBuffer = async (
@@ -37,12 +36,7 @@ const EXT_TO_MIME = {
   ".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
 };
 
-/**
- * Unduh URL menjadi Buffer. Throw bila status != 2xx.
- *
- * @param {string} url
- * @returns {Promise<Buffer>}
- */
+/** Unduh URL menjadi Buffer; throw bila status != 2xx. @param {string} url @returns {Promise<Buffer>} */
 export const fetchBuffer = async (url) => {
   const response = await fetch(url);
   if (!response.ok) {
@@ -53,9 +47,8 @@ export const fetchBuffer = async (url) => {
 
 /**
  * Hapus pesan orang lain di chat (butuh admin/owner di grup).
- *
  * @param {ReturnType<typeof import('baileys').makeWASocket>} sock
- * @param {{remoteJid: string, id?: string, participant?: string}} key - kunci pesan
+ * @param {{remoteJid: string, id?: string, participant?: string}} key
  * @returns {Promise<*>}
  */
 export const deleteMessageFor = (sock, key) =>
@@ -69,9 +62,7 @@ export const deleteMessageFor = (sock, key) =>
   });
 
 /**
- * Susun payload pesan media WhatsApp dari Buffer + metadata mime.
- * Murni (tanpa IO) sehingga mudah diuji.
- *
+ * Susun payload pesan media dari Buffer + mime.
  * @param {Buffer} buffer
  * @param {object} opts
  * @param {string} [opts.mimetype]
@@ -89,9 +80,7 @@ export const mediaMessageFor = (buffer, { mimetype, fileName, caption } = {}) =>
 };
 
 /**
- * Unduh media dari URL lalu kirim ke chat (gambar/video/audio/dokumen).
- * Mime bisa ditebak dari ekstensi URL bila tidak ditegaskan.
- *
+ * Unduh media dari URL lalu kirim.
  * @param {ReturnType<typeof import('baileys').makeWASocket>} sock
  * @param {string} jid
  * @param {object} opts
@@ -99,7 +88,7 @@ export const mediaMessageFor = (buffer, { mimetype, fileName, caption } = {}) =>
  * @param {string} [opts.caption]
  * @param {string} [opts.mimetype]
  * @param {string} [opts.fileName]
- * @param {number} [opts.maxMb] - batas ukuran (dalam MB); throw bila melebihi.
+ * @param {number} [opts.maxMb] - throw bila ukuran melebihi (MB).
  */
 export const sendMediaFromUrl = async (sock, jid, { url, caption, mimetype, fileName, maxMb }) => {
   const buffer = await fetchBuffer(url);

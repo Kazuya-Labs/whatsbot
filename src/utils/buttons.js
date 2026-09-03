@@ -2,7 +2,6 @@ import { sendInteractiveMessage } from "@ryuu-reinzz/button-helper";
 
 /**
  * Mapper satu button -> native flow button (cta_url/cta_copy/cta_call/quick_reply).
- * Murni; dipakai juga oleh carousel agar tidak duplikasi.
  *
  * @param {object} btn
  * @param {'url'|'copy'|'cta_call'|'cta_catalog'|'default'|'call'} btn.type
@@ -70,7 +69,7 @@ export const nativeFlowButtonFor = (btn) => {
  * supaya WhatsApp app mau render button-nya di akun non-Business API.
  *
  * @param {ReturnType<typeof makeWASocket>} sock
- * @param {string} jid - tujuan
+ * @param {string} jid
  * @param {object} opts
  * @param {string} opts.text
  * @param {string} [opts.footer]

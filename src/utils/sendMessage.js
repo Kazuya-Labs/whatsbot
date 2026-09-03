@@ -5,14 +5,11 @@ const MIN_POLL_OPTIONS = 2;
 const MAX_OPTION_LENGTH = 200;
 
 /**
- * Builder payload polling WhatsApp (murni, tanpa IO).
- *
+ * Builder payload polling.
  * @param {object} params
- * @param {string} params.question - teks pertanyaan (wajib).
+ * @param {string} params.question
  * @param {string[]} params.options - 2..12 pilihan, masing-masing ≤ 200 karakter.
- * @param {number} [params.selectableCount=2] - dinamis: `1` = pilih tunggal,
- *   `0` = multi tanpa batas, `2+` = multi maksimal N pilihan.
- *   Divalidasi Baileys: `0 <= selectableCount <= options.length`.
+ * @param {number} [params.selectableCount=2] - `1`=pilih tunggal, `0`=multi bebas, `2+`=max N.
  * @returns {object} payload untuk sock.sendMessage (key `poll`).
  * @throws {Error} bila argument tidak valid.
  */
@@ -58,8 +55,7 @@ export const pollMessageFor = ({
 };
 
 /**
- * Kirim pesan polling ke sebuah chat.
- *
+ * Kirim pesan polling.
  * @param {ReturnType<typeof import('baileys').makeWASocket>} sock
  * @param {string} jid
  * @param {object} opts - sama seperti `pollMessageFor` + `quoted`.
@@ -73,12 +69,10 @@ const renderLine = (cells, widths) =>
     .join("|")}|`;
 
 /**
- * Format data menjadi tabel ASCII di dalam blok kode (monospace WhatsApp).
- * Murni sehingga mudah diuji.
- *
+ * Tabel ASCII dalam blok kode (monospace WhatsApp).
  * @param {object} params
- * @param {string[]} [params.headers] - nama kolom.
- * @param {Array<Array<string|number>>} [params.rows] - baris data (isian boleh bolong).
+ * @param {string[]} [params.headers]
+ * @param {Array<Array<string|number>>} [params.rows]
  * @returns {string}
  */
 export const formatTable = ({ headers = [], rows = [] } = {}) => {
@@ -111,10 +105,8 @@ export const formatTable = ({ headers = [], rows = [] } = {}) => {
 };
 
 /**
- * Konversi subset Markdown ke format teks WhatsApp (\*bold\*, _italic_,
- * ~strike~, blok kode, heading, link, bullet list). Murni.
- * Catatan: blok kode (```) diproses lebih dulu agar isinya tidak ikut ter-konversi.
- *
+ * Konversi subset Markdown ke format teks WhatsApp (bold/italic/strike/code/heading/link/list).
+ * Blok kode (```) diproses lebih dulu agar isinya tidak ikut ter-konversi.
  * @param {string} text
  * @returns {string}
  */

@@ -4,8 +4,8 @@ import { jidToUserNumber } from "#utils/jid.js";
 import { isOwner } from "#utils/config.js";
 
 /**
- * Cek apakah sebuah target boleh dikick oleh `m` (admin).
- * Blokir: admin/superadmin lain, owner, diri sendiri, dan bot.
+ * Cek apakah target boleh dikick oleh `m`. Blokir: sesama admin/superadmin,
+ * owner, diri sendiri, dan bot.
  *
  * @param {object} m - objek pesan
  * @param {ReturnType<typeof import('baileys').makeWASocket>} sock
@@ -15,24 +15,20 @@ import { isOwner } from "#utils/config.js";
 const kickBlockReason = (m, sock, target) => {
   const targetUser = jidToUserNumber(target);
 
-  // Bot jangan dikick oleh dirinya lewat command
   const botUser = jidToUserNumber(sock.user?.id);
   if (botUser && targetUser === botUser) {
     return "bot itu sendiri";
   }
 
-  // Owner tidak boleh dikick
   if (targetUser && isOwner(targetUser)) {
     return "owner bot";
   }
 
-  // Admin tidak boleh menghapus dirinya sendiri
   const senderUser = jidToUserNumber(m.sender);
   if (senderUser && targetUser === senderUser) {
     return "diri sendiri";
   }
 
-  // Admin lain / superadmin tidak boleh dikick oleh admin biasa
   const participant = m.metadata?.participants?.find((p) => {
     const pUser = jidToUserNumber(p.id);
     return pUser === targetUser;

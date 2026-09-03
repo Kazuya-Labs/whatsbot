@@ -5,11 +5,7 @@ import { pipeline } from "stream";
 import logs from "./logger.js";
 import sharp from "sharp";
 
-/**
- * Format ukuran Byte menjadi satuan yang mudah dibaca (KB, MB, GB).
- * @param {number} bytes - Ukuran dalam satuan Byte.
- * @returns {string} String ukuran terformat (contoh: "1.5 MB").
- */
+/** Format ukuran Byte menjadi KB/MB/GB. @param {number} bytes @returns {string} */
 export const formatSize = (bytes) => {
   if (bytes === 0) return "0 Bytes";
   const sizes = ["Bytes", "KB", "MB", "GB", "TB"];
@@ -17,12 +13,7 @@ export const formatSize = (bytes) => {
   return `${parseFloat((bytes / Math.pow(1024, i)).toFixed(2))} ${sizes[i]}`;
 };
 
-/**
- * Periksa apakah ukuran file dalam Buffer melebihi batas maksimum.
- * @param {Buffer} buffer - Objek Buffer file.
- * @param {number} maxMegabytes - Batas maksimal dalam MegaByte (MB).
- * @returns {boolean} True jika aman, False jika melebihi batas.
- */
+/** True jika ukuran Buffer <= maxMegabytes. @param {Buffer} buffer @param {number} maxMegabytes @returns {boolean} */
 export const checkMaxSize = (buffer, maxMegabytes) => {
   if (!Buffer.isBuffer(buffer))
     throw new TypeError("Input harus berupa Buffer");
@@ -30,30 +21,17 @@ export const checkMaxSize = (buffer, maxMegabytes) => {
   return buffer.length <= maxSizeInBytes;
 };
 
-/**
- * Ambil ekstensi file dalam huruf kecil (termasuk titik awal, contoh: .jpg).
- * @param {string} filename - Nama file lengkap.
- * @returns {string} Ekstensi file.
- */
+/** Ekstensi file huruf kecil termasuk titik (contoh: .jpg). @param {string} filename @returns {string} */
 export const getExtension = (filename) => {
   return extname(filename).toLowerCase();
 };
 
-/**
- * Validasi apakah file termasuk dalam daftar tipe MIME yang diizinkan.
- * @param {string} mimeType - Tipe MIME file (contoh: 'image/jpeg').
- * @param {string[]} allowedTypes - Daftar tipe MIME yang diizinkan.
- * @returns {boolean}
- */
+/** @param {string} mimeType @param {string[]} allowedTypes @returns {boolean} */
 export const isValidMimeType = (mimeType, allowedTypes) => {
   return allowedTypes.includes(mimeType);
 };
 
-/**
- * Periksa apakah suatu file ada di dalam sistem direktori tanpa membaca isinya.
- * @param {string} filePath - Jalur lengkap ke file.
- * @returns {Promise<boolean>} True jika file ada, False jika tidak ada.
- */
+/** @param {string} filePath @returns {Promise<boolean>} */
 export const fileExists = async (filePath) => {
   try {
     await access(filePath);
@@ -63,62 +41,43 @@ export const fileExists = async (filePath) => {
   }
 };
 
-/**
- * Ambil ukuran file langsung dari sistem tanpa memuatnya ke dalam Buffer (Efisien untuk file besar).
- * @param {string} filePath - Jalur lengkap ke file.
- * @returns {Promise<number>} Ukuran dalam Byte.
- */
+/** Ukuran file dari disk tanpa memuat isinya. @param {string} filePath @returns {Promise<number>} */
 export const getDiskFileSize = async (filePath) => {
   const fileStat = await stat(filePath);
   return fileStat.size;
 };
 
 /**
- * Mendapatkan ukuran file dari piringan (disk) tanpa memuat isinya ke memori.
- * @param {string} filePath - Jalur lengkap ke file.
- * @returns {Promise<number>} Ukuran file dalam satuan Byte.
- */
-export const getFileSizeFromDisk = async (filePath) => {
-  const fileStat = await stat(filePath);
-  return fileStat.size;
-};
-
-/**
- * Menyalin file besar secara efisien menggunakan Stream (Chunk-by-Chunk).
- * Menggunakan memori yang sangat konstan (biasanya hanya ~64KB per chunk).
- *
- * @param {string} sourcePath - Jalur file sumber.
- * @param {string} destinationPath - Jalur file tujuan.
+ * Salin file besar via stream (memori konstan per chunk).
+ * @param {string} sourcePath
+ * @param {string} destinationPath
  * @returns {Promise<void>}
  */
 export const copyFileWithStream = async (sourcePath, destinationPath) => {
   const readStream = createReadStream(sourcePath);
   const writeStream = createWriteStream(destinationPath);
 
-  // pipeline otomatis menangani penutupan stream dan error handling
+  // pipeline menangani penutupan stream + error
   await pipeline(readStream, writeStream);
 };
 
 /**
- * Melakukan pemrosesan atau validasi data per chunk dari file besar (Contoh: mencari kata kunci).
- *
- * @param {string} filePath - Jalur file.
- * @param {Function} onChunk - Fungsi callback yang dijalankan setiap kali chunk data diterima.
+ * Proses file besar per-chunk (mis. cari kata kunci).
+ * @param {string} filePath
+ * @param {Function} onChunk
  * @returns {Promise<void>}
  */
 export const processFileByChunks = async (filePath, onChunk) => {
   const readStream = createReadStream(filePath, {
-    highWaterMark: 64 * 1024, // Mengatur ukuran maksimal per chunk (contoh: 64 KB)
+    highWaterMark: 64 * 1024, // ukuran chunk (64 KB)
   });
 
   for await (const chunk of readStream) {
-    // chunk di sini berupa Buffer kecil
     onChunk(chunk);
   }
 };
 
 /**
- *
  * @param {import("fs").PathLike} pathdir - path location
  * @returns {Object}
  */
