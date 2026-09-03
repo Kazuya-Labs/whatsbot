@@ -34,7 +34,7 @@
   "dependencies": {
     "@ryuu-reinzz/button-helper": "^2.2.3",
     "axios": "^1.18.1",
-    "baileys": "npm:@whiskeysockets/baileys@7.0.0-rc13",
+    "baileys": "npm:@whiskeysockets/baileys@7.0.0-rc14",
     "better-sqlite3": "^13.0.3",
     "delay": "^7.0.0",
     "drizzle-orm": "^0.45.2",
