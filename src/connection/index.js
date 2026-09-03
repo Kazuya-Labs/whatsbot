@@ -59,9 +59,7 @@ const start = async () => {
       msgRetryCounterCache: msgRetryCache,
       maxMsgRetryCount: sockCfg?.maxMsgRetryCount ?? 2,
       syncFullHistory: false,
-      printQRInTerminal: false,
       version,
-      fireInitQueries: false,
       transactionOpts: {
         maxCommitRetries: 10,
         delayBetweenTriesMs: 300,
@@ -75,20 +73,6 @@ const start = async () => {
       keepAliveIntervalMs: sockCfg?.keepAliveIntervalMs ?? 30_000,
     });
 
-    if (!sock.authState.creds.registered) {
-      const nomor = await question(getConfig().pairingPrompt);
-      console.log("🚀 ~ starting ~ nomor:", nomor);
-      await delay(3000);
-      const codePairing = await sock
-        .requestPairingCode(nomor.trim())
-        .catch(null);
-      if (!codePairing) throw new Error("Gagal pairing code");
-      logs.info(
-        "code pairing ",
-        codePairing.slice(0, 4) + "-" + codePairing.slice(4),
-      );
-    }
-
     const pathdir = path.join(process.cwd(), "src", "plugins");
     await initStorage();
     await registerPlugin(pathdir);
@@ -97,12 +81,41 @@ const start = async () => {
     sock.ev.on("messages.upsert", (event) => {
       messageUpsert(event, sock);
     });
-    sock.ev.on("connection.update", (update) => {
+    sock.ev.on("connection.update", async (update) => {
+      const { qr } = update;
+
+      if (qr && !sock.authState.creds.registered) {
+        const nomor = await question(getConfig().pairingPrompt);
+        console.log("🚀 ~ starting ~ nomor:", nomor);
+        await delay(3000);
+        const codePairing = await sock
+          .requestPairingCode(nomor.trim())
+          .catch((err) => {
+            logs.error("Gagal pairing code:", err);
+            return null;
+          });
+        if (codePairing) {
+          logs.info(
+            "code pairing ",
+            codePairing.slice(0, 4) + "-" + codePairing.slice(4),
+          );
+        }
+      }
+
       connectionUpdate(update, sock, start);
     });
-    const invalidateAllGroups = () => groupCache.del("all");
-    sock.ev.on("groups.update", invalidateAllGroups);
-    sock.ev.on("group-participants.update", invalidateAllGroups);
+    // Invalidasi cache metadata grup (per-jid) + daftar "all" saat grup berubah,
+    // supaya status admin (`isAdmin`) tetap akurat tanpa fetch berlebih.
+    const invalidateGroup = (jid) => {
+      groupCache.del(jid);
+      groupCache.del("all");
+    };
+    sock.ev.on("groups.update", (updates) => {
+      for (const u of updates) invalidateGroup(u.id);
+    });
+    sock.ev.on("group-participants.update", (event) =>
+      invalidateGroup(event.id),
+    );
   } catch (error) {
     logs.error(error);
   }
